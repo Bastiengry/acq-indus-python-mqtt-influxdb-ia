@@ -1,0 +1,97 @@
+services:      
+  # Simulator de données d'entrée
+  acq-indus-py-input-simulator:
+    build: ./py-input-tunnel-fan-simulator
+    container_name: acq-indus-fan-simulator
+    depends_on:
+      - acq-indus-mosquitto
+    environment:
+      - MQTT_BROKER=acq-indus-mosquitto
+      - FAN_ID=TUNNEL_NORD_01
+    restart: always
+ 
+  # Le Broker MQTT (Le facteur qui distribue les messages)
+  acq-indus-mosquitto:
+    image: eclipse-mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+  # La base de données (Optimisée pour le temps)
+  acq-indus-influxdb:
+    image: influxdb:2.7
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=password123
+      - DOCKER_INFLUXDB_INIT_ORG=bg_soft
+      - DOCKER_INFLUXDB_INIT_BUCKET=fan_telemetry
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUX_TOKEN}
+    volumes:
+      - influx_data:/var/lib/influxdb2
+      
+  # Le pont entre MQTT et InfluxDB
+  acq-indus-telegraf:
+    image: telegraf:1.28
+    container_name: acq-indus-telegraf
+    depends_on:
+      - acq-indus-mosquitto
+      - acq-indus-influxdb
+    environment:
+      - INFLUX_URL=http://acq-indus-influxdb:8086
+      - INFLUX_TOKEN=${INFLUX_TOKEN}
+      - INFLUX_ORG=bg_soft
+      - INFLUX_BUCKET=fan_telemetry
+      - MQTT_BROKER=acq-indus-mosquitto
+    volumes:
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    restart: always
+
+  # API IA qui analyse les données à la recherche d'anomalies (isolation forest)
+  acq-indus-py-ia-brain-api:
+    build: ./py-ia-brain-api
+    container_name: acq-indus-ia-brain-api
+    environment:
+      - INFLUXDB_TOKEN=${INFLUX_TOKEN}
+      - INFLUXDB_ORG=bg_soft
+      - INFLUXDB_BUCKET=fan_telemetry
+      - INFLUXDB_URL=http://acq-indus-influxdb:8086
+      - AI_API_FILTER_ADDR="0.0.0.0"
+      - AI_API_PORT=8000
+    depends_on:
+      - acq-indus-influxdb
+    ports:
+      - "8000:8000"
+    restart: always
+
+  acq-indus-frontend:
+    build: ./frontend/acq-indus-frontend
+    container_name: acq-indus-frontend
+    ports:
+      - "8080:80" # Accessible sur http://localhost:8080
+    depends_on:
+      - acq-indus-py-ia-brain-api # Attend que l'API soit prête
+    restart: always
+    
+  # Visualisation avancée des données
+  acq-indus-grafana:
+    image: grafana/grafana:latest
+    container_name: acq-indus-grafana
+    ports:
+      - "3001:3000" # On utilise 3001 pour éviter tout conflit
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin # Mot de passe par défaut
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+    depends_on:
+      - acq-indus-influxdb
+    volumes:
+      - grafana_data:/var/lib/grafana
+    restart: always
+
+
+volumes:
+  influx_data:
+  grafana_data:

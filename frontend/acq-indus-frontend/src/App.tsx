@@ -1,0 +1,73 @@
+import { useState } from 'react';
+import Fan from './Fan';
+import './App.css';
+
+const App = () => {
+  const [isOpen, setIsOpen] = useState(true);
+  const [activeView, setActiveView] = useState('monitor');
+
+  return (
+    <div className="w-full h-full flex bg-white margin-0">
+      
+      {/* SIDEBAR (Le Drawer) */}
+      <div className={`
+        ${isOpen ? 'w-64' : 'w-0'} 
+        flex flex-col bg-[#2c3e50] overflow-hidden transition-all duration-300 flex-shrink-0
+      `}>
+        <div className="p-5 font-bold text-[1.2rem] border-b border-[#34495e] text-center text-white">
+          FAN CONTROL 01
+        </div>
+        <nav style={{ padding: '10px' }}>
+          <button 
+            onClick={() => setActiveView('monitor')}
+            style={navButtonStyle(activeView === 'monitor')}>
+            📊 Dashboard Live
+          </button>
+          <button 
+            onClick={() => setActiveView('grafana')}
+            style={navButtonStyle(activeView === 'grafana')}>
+            📈 Analyses Grafana
+          </button>
+        </nav>
+      </div>
+
+      {/* CONTENU PRINCIPAL */}
+      <div className="flex-1 flex flex-col">
+        <header className="p-4 flex items-center bg-[#34495e] text-white">
+          <button onClick={() => setIsOpen(!isOpen)} style={{ marginRight: '15px', cursor: 'pointer' }}>☰</button>
+          <h2 style={{ margin: 0 }}>{activeView === 'monitor' ? 'Live Monitoring' : 'Grafana Analytics'}</h2>
+        </header>
+
+        <main className="flex-1 p-4 overflow-auto">
+          {activeView === 'monitor' ? (
+             <div id="fan">
+               <Fan />
+             </div>
+          ) : (
+             // Ecrire "d-solo" avoir uniquement le panel sans les menus, "d" pour le dashboard complet
+             <iframe 
+               src="http://localhost:3001/d-solo/adpwjg6/bgry?orgId=1&from=1778405833291&to=1778427433291&timezone=browser&panelId=panel-1" 
+               style={{ width: '100%', height: '80vh', border: 'none', borderRadius: '8px' }}
+             />
+          )}
+        </main>
+      </div>
+    </div>
+  );
+};
+
+// Petit helper pour le style des boutons
+const navButtonStyle = (isActive: boolean): React.CSSProperties => ({
+  width: '100%',
+  padding: '12px',
+  marginBottom: '10px',
+  backgroundColor: isActive ? '#3498db' : 'transparent',
+  color: 'white',
+  border: 'none',
+  borderRadius: '4px',
+  textAlign: 'left' as const, 
+  cursor: 'pointer',
+  transition: '0.2s'
+});
+
+export default App;

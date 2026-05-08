@@ -1,0 +1,6 @@
+# Global
+.env
+
+# Frontend
+frontend/acq-indus-frontend/dist/
+frontend/acq-indus-frontend/node_modules/
