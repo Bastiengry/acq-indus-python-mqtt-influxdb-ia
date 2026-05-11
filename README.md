@@ -1,6 +1,8 @@
 # Flux
+```
 Simulateur Python -> Protocole MQTT (Mosquitto) -> Telegraf (Collecteur) -> InfluxDB (Séries Temporelles) -> IA Python -> Affichage Frontend (onglet "monitor")
                                                                                                           -> Grafana + Affichage frontend (onglet "grafana")
+```
 
 # Génération du token dans influxdb
 1. Se connecter à influxdb à l'adresse "http://localhost:8086/"
