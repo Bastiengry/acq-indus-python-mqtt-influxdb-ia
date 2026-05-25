@@ -8,8 +8,8 @@ from datetime import datetime
 # Configuration via variables d'environnement (plus flexible)
 MQTT_BROKER = os.getenv("MQTT_BROKER", "mqtt-broker")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
-MQTT_TOPIC = os.getenv("MQTT_TOPIC", "tunnel/fan/01/telemetry")
 FAN_ID = os.getenv("FAN_ID", "FAN_01")
+MQTT_TOPIC = "tunnel/fan/{FAN_ID}/telemetry"
 
 class TunnelFanSimulator:
     def __init__(self, fan_id):

@@ -1,7 +1,17 @@
 # Flux
 ```
-Simulateur Python -> Protocole MQTT (Mosquitto) -> Telegraf (Collecteur) -> InfluxDB (Séries Temporelles) -> IA Python -> Affichage Frontend (onglet "monitor")
-                                                                                                          -> Grafana + Affichage frontend (onglet "grafana")
+Simulateur Python -> Broker MQTT (Mosquitto) -> | -> Telegraf (Collecteur) -> InfluxDB (Séries Temporelles) -> IA Python -> Affichage Frontend (onglet "monitor")
+                                                |                                                           -> Grafana + Affichage frontend (onglet "grafana")
+                                                |
+                                                |
+                                                |
+                                                | -> Gestionnaire d'alarmes
+                                                |       (ThingsBoard)
+                                                |            |
+                                                |            | Ecriture dans un topic dédié aux alarmes
+                                                |            | (Qui peut ensuite utiliser telegraf pour écrire en BDD)
+                                                |            |
+                                                | <-        <-
 ```
 
 # Génération du token dans influxdb
@@ -30,8 +40,9 @@ Simulateur Python -> Protocole MQTT (Mosquitto) -> Telegraf (Collecteur) -> Infl
 - Poly Haven
 
 # Grafana
-1. Connexion : Login admin / Password admin.
-2. Ajouter une source de données :
+1. Se connecter à grafana à l'adresse "http://localhost:3001/"
+2. Connexion : Login "admin" / Password "admin".
+3. Ajouter une source de données :
 	- Va dans Connections > Data Sources.
 	- Choisis InfluxDB.
 	- Paramétrage InfluxDB (Mode Flux) :
@@ -39,7 +50,7 @@ Simulateur Python -> Protocole MQTT (Mosquitto) -> Telegraf (Collecteur) -> Infl
 	- URL : http://acq-indus-influxdb:8086 (on utilise le nom du container).
 	- Auth : Désactive "Basic Auth" et utilise ton Token InfluxDB, ton Org (bg_soft) et ton Default Bucket (fan_telemetry).
 	- Save & Test : Si le message est vert, Grafana "voit" tes données de vibration.
-3. Créer ton premier Dashboard
+4. Créer ton premier Dashboard
 	- Maintenant que Grafana est relié, tu peux créer un graphique professionnel :
 	- Crée un nouveau Dashboard et ajoute une "Visualization".
 	- Dans l'éditeur de requête, utilise ce code Flux (similaire à celui de ton IA) :
@@ -51,3 +62,56 @@ Simulateur Python -> Protocole MQTT (Mosquitto) -> Telegraf (Collecteur) -> Infl
 		  |> filter(fn: (r) => r["_field"] == "vibration")
 		  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
 		  |> yield(name: "mean")```
+
+# Frontend
+1. Pour visualiser le frontend, se connecter à l'adresse "http://localhost:8080"
+
+# ThingsBoard
+
+## Configuration de ThingsBoard
+1. Se connecter à ThingsBoard à l'adresse "http://localhost:9090/"
+2. Connexion : Login "tenant@thingsboard.org" / Password "tenant"          (OU ==> "sysadmin@thingsboard.org" / "sysadmin").
+3. Allez dans Entities >> Passerelle     (en français => Entités >> Appareils).
+4. Cliquer sur le gros bouton "+" en haut à droite, puis sélectionnez Add new device (Ajouter un nouvel appareil).
+	- Le nommer (ex: "Passerelle_ThingsBoard") puis cliquer sur Add.
+	- Device Profile : Laissez default.
+	- Cliquer sur Add (Ajouter).
+5. Cliquer sur le bouton "Connectors configuration" :
+	- Cliquer sur "Add connector" :
+		* Type : MQTT
+		* Name : MQTT
+		* Cliquer sur "Ajouter"
+6. Sur la droite, aller dans le menu "Connection to broker" :
+	- Host : acq-indus-mosquitto
+	- Port : 1883
+	- Client ID : ThingsBoard_gateway
+	- User : anonymous
+7. Sur la droite, aller dans le menu "Data mapping" :
+	- Supprimer toutes les lignes existantes
+	- Cliquer sur "Add mapping" :
+		* Topic filter : tunnel/fan/+/telemetry
+		* Payload type: JSON
+		* Appareil >> Name : ${fan_id}
+		* Appareil >> Profile name : Ventilateur
+		* Appareil >> Attributes : 
+			- Cliquer sur "Modifier (symbole crayon)"
+			- Cliquer sur "Add attribute" :
+				* Key : vibration
+				* Type : double
+				* Value : ${vibration}
+	- Valider tout
+8. Une fois créée, cliquer sur la ligne correspond à la Gateway :
+	- Sur la droite, aller dans le menu "General configuration" :
+		* Dans l'onglet "General", générer un jeton d'accès (access token) pour que la Gateway puisse se connecter à ThingsBoard
+		* Copier le Access Token
+	- Coller l'access token dans le ".env"
+	- Redémarrer le "docker compose" en forçant la recréation de ThingsBoard Gateway   ==>   "sudo docker compose up -d --force-recreate acq-indus-thingsboard-gateway"
+
+## Visualisation dans ThingsBoard
+1. Une fois les conteneurs redémarrés, la passerelle va commencer à écouter le broker Mosquitto.
+2. Retourner sur l'interface web de ThingsBoard (http://localhost:9090).
+3. Aller dans Entities >> Devices (Entités >> Dispositifs).
+4. Magie : Un nouvel équipement nommé TUNNEL_NORD_01 (la valeur de la variable fan_id) s'est créé tout seul.
+5. Cliquer dessus :
+	- Aller dans l'onglet Latest Telemetry
+	- Normalement, les données (produites par le simulateur Python en entrée du système) sont visibles 
