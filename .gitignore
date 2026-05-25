@@ -1,6 +1,10 @@
 # Global
 .env
 
-# Frontend
+# Frontend supervision
 frontend/acq-indus-frontend/dist/
 frontend/acq-indus-frontend/node_modules/
+
+# Frontend portal
+frontend/acq-indus-portal/dist/
+frontend/acq-indus-portal/node_modules/

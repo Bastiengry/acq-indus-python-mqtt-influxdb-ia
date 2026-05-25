@@ -63,8 +63,11 @@ Simulateur Python -> Broker MQTT (Mosquitto) -> | -> Telegraf (Collecteur) -> In
 		  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
 		  |> yield(name: "mean")```
 
-# Frontend
-1. Pour visualiser le frontend, se connecter à l'adresse "http://localhost:8080"
+# Frontend (portail web)
+1. Pour visualiser le portail frontend, se connecter à l'adresse "http://localhost:8080"
+
+# Frontend (supervision)
+1. Pour visualiser le frontend de supervision, se connecter à l'adresse "http://localhost:8081" ou cliquer sur le lien dans l'application de portail web
 
 # ThingsBoard
 

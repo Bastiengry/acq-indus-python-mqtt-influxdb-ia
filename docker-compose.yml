@@ -69,12 +69,12 @@ services:
       - "8000:8000"
     restart: always
 
-  # Frontend
-  acq-indus-frontend:
+  # Frontend supervision application
+  acq-indus-frontend-supervision:
     build: ./frontend/acq-indus-frontend
-    container_name: acq-indus-frontend
+    container_name: acq-indus-frontend-supervision
     ports:
-      - "8080:80" # Accessible sur http://localhost:8080
+      - "8081:80" # Accessible sur http://localhost:8081
     depends_on:
       - acq-indus-py-ia-brain-api # Attend que l'API soit prête
     restart: always
@@ -126,6 +126,13 @@ services:
       - thingsboard_gw_logs:/tb-gateway/logs
     restart: always
 
+  # Web portal
+  acq-indus-portal:
+    build: ./frontend/acq-indus-portal
+    container_name: acq-indus-portal
+    ports:
+      - "8080:80" # Accessible sur http://localhost:8080
+    restart: always
 
 
 volumes:

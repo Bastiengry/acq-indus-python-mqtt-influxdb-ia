@@ -46,7 +46,7 @@ const App = () => {
           ) : (
              // Ecrire "d-solo" avoir uniquement le panel sans les menus, "d" pour le dashboard complet
              <iframe 
-               src="http://localhost:3001/d-solo/adpwjg6/bgry?orgId=1&from=1778405833291&to=1778427433291&timezone=browser&panelId=panel-1" 
+               src="http://localhost:3001/d/ffn49xjne0ao0c/new-dashboard?orgId=1" 
                style={{ width: '100%', height: '80vh', border: 'none', borderRadius: '8px' }}
              />
           )}
