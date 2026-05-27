@@ -90,11 +90,12 @@ services:
       - GF_SECURITY_ALLOW_EMBEDDING=true
     depends_on:
       - acq-indus-influxdb
+      - acq-indus-loki
     volumes:
       - grafana_data:/var/lib/grafana
     restart: always
 
-  # Le conteneur d'exécution (Tout-en-un)
+  # ThingsBoard (plateforme IOT)
   acq-indus-thingsboard:
     image: thingsboard/tb-postgres:4.2.1
     container_name: acq-indus-thingsboard
@@ -124,6 +125,27 @@ services:
     volumes:
       - ./thingsboard-gateway/config:/tb-gateway/config
       - thingsboard_gw_logs:/tb-gateway/logs
+    restart: always
+
+  # Le moteur de stockage des logs
+  acq-indus-loki:
+    image: grafana/loki:2.9.4
+    container_name: acq-indus-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: always
+
+  # L'agent qui collecte les logs des conteneurs Docker
+  acq-indus-promtail:
+    image: grafana/promtail:2.9.4
+    container_name: acq-indus-promtail
+    volumes:
+      - ./promtail/promtail-config.yaml:/etc/promtail/config.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yaml
+    depends_on:
+      - acq-indus-loki
     restart: always
 
   # Web portal

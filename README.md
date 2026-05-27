@@ -1,7 +1,7 @@
-# Flux
+# Flux de données de l'application
 ```
-Simulateur Python -> Broker MQTT (Mosquitto) -> | -> Telegraf (Collecteur) -> InfluxDB (Séries Temporelles) -> IA Python -> Affichage Frontend (onglet "monitor")
-                                                |                                                           -> Grafana + Affichage frontend (onglet "grafana")
+Simulateur Python -> Broker MQTT (Mosquitto) -> | -> Telegraf (Collecteur) -> InfluxDB (Séries Temporelles) -> IA Python -> application Frontend supervision (onglet "monitor")
+                                                |                                                           -> application Grafana     + application Frontend supervision (onglet "grafana")
                                                 |
                                                 |
                                                 |
@@ -13,6 +13,7 @@ Simulateur Python -> Broker MQTT (Mosquitto) -> | -> Telegraf (Collecteur) -> In
                                                 |            |
                                                 | <-        <-
 ```
+
 
 # Génération du token dans influxdb
 1. Se connecter à influxdb à l'adresse "http://localhost:8086/"
@@ -34,47 +35,74 @@ Simulateur Python -> Broker MQTT (Mosquitto) -> | -> Telegraf (Collecteur) -> In
 - Simple : docker compose down
 - Avec suppression des volumes : docker compose down -v
 
+
+# S'abonner au topic MQTT dans mosquitto pour débugger
+sudo docker exec -it acq-indus-mosquitto mosquitto_sub -h localhost -t "#" -v
+
+
 # Objets 3D (.glb)
 - Quaternius
 - Sketchfab
 - Poly Haven
 
-# Grafana
+
+# Grafana : afficher un dashboard avec les données du capteur d'entrée
 1. Se connecter à grafana à l'adresse "http://localhost:3001/"
 2. Connexion : Login "admin" / Password "admin".
 3. Ajouter une source de données :
-	- Va dans Connections > Data Sources.
-	- Choisis InfluxDB.
+	- Aller dans "Connections > Data Sources".
+	- Cliquer sur "Add new data source".
+	- Choisir "InfluxDB".
 	- Paramétrage InfluxDB (Mode Flux) :
-	- Query Language : Sélectionne Flux (très important pour InfluxDB 2.x).
-	- URL : http://acq-indus-influxdb:8086 (on utilise le nom du container).
-	- Auth : Désactive "Basic Auth" et utilise ton Token InfluxDB, ton Org (bg_soft) et ton Default Bucket (fan_telemetry).
-	- Save & Test : Si le message est vert, Grafana "voit" tes données de vibration.
-4. Créer ton premier Dashboard
-	- Maintenant que Grafana est relié, tu peux créer un graphique professionnel :
-	- Crée un nouveau Dashboard et ajoute une "Visualization".
-	- Dans l'éditeur de requête, utilise ce code Flux (similaire à celui de ton IA) :
-	- Extrait de code
-		```from(bucket: "fan_telemetry")
-		  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-		  |> filter(fn: (r) => r["_measurement"] == "mqtt_consumer")
-		  |> filter(fn: (r) => r["fan_id"] == "TUNNEL_NORD_01")
-		  |> filter(fn: (r) => r["_field"] == "vibration")
-		  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
-		  |> yield(name: "mean")```
+		* Query Language : Sélectionner Flux (très important pour InfluxDB 2.x).
+		* URL : http://acq-indus-influxdb:8086 (on utilise le nom du container).
+		* Auth : Désactiver "Basic Auth" et utilise ton Token InfluxDB, ton Org (bg_soft) et ton Default Bucket (fan_telemetry).
+		* Cliquer sur "Save & Test" : Si le message est vert, la configuration est correcte.
+4. Créer un Dashboard
+	- Créer un nouveau Dashboard et ajoute une "Visualization".
+	- Dans l'éditeur de requête, utiliser ce code Flux :
+		- Extrait de code :
+			```from(bucket: "fan_telemetry")
+			   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+			   |> filter(fn: (r) => r["_measurement"] == "mqtt_consumer")
+			   |> filter(fn: (r) => r["fan_id"] == "TUNNEL_NORD_01")
+			   |> filter(fn: (r) => r["_field"] == "vibration")
+			   |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+			   |> yield(name: "mean")```
 
-# Frontend (portail web)
+
+# Grafana : afficher les logs
+1. Se connecter à grafana à l'adresse "http://localhost:3001/"
+2. Connexion : Login "admin" / Password "admin".
+3. Ajouter une source de données :
+	- Aller dans "Connections > Data Sources".
+	- Cliquer sur "Add new data source".
+	- Choisis "Loki".
+	- Paramétrage Loki :
+		* URL : http://acq-indus-loki:3100 (on utilise le nom du container).
+		* Cliquer sur "Save & Test" : Si le message est vert, la configuration est correcte.
+4. Aller dans l'onglet "Explore"
+	- Choisir la source "Loki" :
+		* Section "Label filters" :
+			- Select Label : container
+			- Operator : "="
+			- Select Value : acq-indus-influxdb
+
+
+# Portail web frontend
 1. Pour visualiser le portail frontend, se connecter à l'adresse "http://localhost:8080"
 
-# Frontend (supervision)
+
+# Supervision frontend
 1. Pour visualiser le frontend de supervision, se connecter à l'adresse "http://localhost:8081" ou cliquer sur le lien dans l'application de portail web
+
 
 # ThingsBoard
 
 ## Configuration de ThingsBoard
 1. Se connecter à ThingsBoard à l'adresse "http://localhost:9090/"
 2. Connexion : Login "tenant@thingsboard.org" / Password "tenant"          (OU ==> "sysadmin@thingsboard.org" / "sysadmin").
-3. Allez dans Entities >> Passerelle     (en français => Entités >> Appareils).
+3. Aller dans Entities >> Passerelle     (en français => Entités >> Appareils).
 4. Cliquer sur le gros bouton "+" en haut à droite, puis sélectionnez Add new device (Ajouter un nouvel appareil).
 	- Le nommer (ex: "Passerelle_ThingsBoard") puis cliquer sur Add.
 	- Device Profile : Laissez default.
@@ -109,6 +137,7 @@ Simulateur Python -> Broker MQTT (Mosquitto) -> | -> Telegraf (Collecteur) -> In
 		* Copier le Access Token
 	- Coller l'access token dans le ".env"
 	- Redémarrer le "docker compose" en forçant la recréation de ThingsBoard Gateway   ==>   "sudo docker compose up -d --force-recreate acq-indus-thingsboard-gateway"
+
 
 ## Visualisation dans ThingsBoard
 1. Une fois les conteneurs redémarrés, la passerelle va commencer à écouter le broker Mosquitto.
