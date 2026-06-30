@@ -1,0 +1,17 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB
+    type: influxdb
+    uid: influxdb-datasource
+    access: proxy
+    url: http://acq-indus-influxdb:8086 # À ajuster selon le nom de votre conteneur InfluxDB
+    jsonData:
+      version: Flux
+      organization: ${INFLUX_ORG}
+      defaultBucket: ${INFLUX_BUCKET}
+    secureJsonData:
+      # Grafana va remplacer ceci automatiquement par la valeur issue du .env
+      token: ${INFLUX_TOKEN} 
+    isDefault: true
+    editable: true # Permet de la modifier quand même depuis l'interface si besoin

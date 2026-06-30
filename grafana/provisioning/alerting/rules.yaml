@@ -1,0 +1,74 @@
+apiVersion: 1
+
+# 1. Configuration du point de contact (Webhook HTTP Telegraf)
+contactPoints:
+  - orgId: 1
+    name: acq-alarm
+    receivers:
+      - uid: contact-webhook-telegraf
+        type: webhook
+        settings:
+          url: http://acq-indus-telegraf:8087/grafana-webhook
+          method: POST
+
+# 2. Configuration de la politique de routage par défaut
+policies:
+  - orgId: 1
+    receiver: acq-alarm
+    group_by: ["alertname", "fan_id"]
+    group_wait: 10s
+    group_interval: 30s
+    repeat_interval: 2m
+
+# 3. Déclaration de la règle d'alerte de vibration
+groups:
+  - orgId: 1
+    name: POC_Industrial_Alarms
+    folder: acq-alarm
+    interval: 10s
+    rules:
+      - uid: acq-indus-alarm-rule
+        title: Vibration Ventilateur Trop Haute
+        condition: C # CORRECTION : L'état d'alerte est déterminé par le seuil (C)
+        for: 0s
+        annotations:
+          summary: "Alerte vibration sur {{ $labels.fan_id }} : Valeur actuelle {{ $values.B.Value }} mm/s"
+          description: "La vibration a dépassé le seuil critique de 2.5 mm/s."
+        
+        data:
+          # --- Bloc A : La Requête Flux InfluxDB ---
+          - refId: A
+            datasourceUid: influxdb-datasource
+            relativeTimeRange:
+              from: 60
+              to: 0
+            model:
+              apiVersion: 2
+              query: |
+                from(bucket: "fan_telemetry")
+                  |> range(start: -1m)
+                  |> filter(fn: (r) => r["_measurement"] == "mqtt_consumer")
+                  |> filter(fn: (r) => r["_field"] == "vibration")
+                  |> drop(columns: ["status"])
+
+          # --- CORRECTION Bloc B : Véritable Réduction (Donne la valeur décimale brute) ---
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+
+          # --- CORRECTION Bloc C : Seuil Mathématique appliqué sur le Bloc B ---
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    params:
+                      - 2.5
+                    type: gt
