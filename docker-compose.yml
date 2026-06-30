@@ -9,6 +9,8 @@ services:
       - MQTT_BROKER=acq-indus-mosquitto
       - FAN_ID=TUNNEL_NORD_01
     restart: always
+    networks:
+      - acq-network
  
   # Le Broker MQTT (Le facteur qui distribue les messages)
   acq-indus-mosquitto:
@@ -18,6 +20,10 @@ services:
       - "1883:1883"
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    networks:
+      - acq-network
 
   # La base de données (Optimisée pour le temps)
   acq-indus-influxdb:
@@ -34,6 +40,8 @@ services:
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUX_TOKEN}
     volumes:
       - influx_data:/var/lib/influxdb2
+    networks:
+      - acq-network
       
   # Le pont entre MQTT et InfluxDB
   acq-indus-telegraf:
@@ -50,7 +58,11 @@ services:
       - MQTT_BROKER=acq-indus-mosquitto
     volumes:
       - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    ports:
+      - "8087:8087"
     restart: always
+    networks:
+      - acq-network
 
   # API IA qui analyse les données à la recherche d'anomalies (isolation forest)
   acq-indus-py-ia-brain-api:
@@ -68,6 +80,8 @@ services:
     ports:
       - "8000:8000"
     restart: always
+    networks:
+      - acq-network
 
   # Frontend supervision application
   acq-indus-frontend-supervision:
@@ -78,6 +92,8 @@ services:
     depends_on:
       - acq-indus-py-ia-brain-api # Attend que l'API soit prête
     restart: always
+    networks:
+      - acq-network
     
   # Visualisation avancée des données
   acq-indus-grafana:
@@ -85,47 +101,23 @@ services:
     container_name: acq-indus-grafana
     ports:
       - "3001:3000" # On utilise 3001 pour éviter tout conflit
+    env_file:
+      - .env
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin # Mot de passe par défaut
       - GF_SECURITY_ALLOW_EMBEDDING=true
+      - INFLUX_ORG=${INFLUX_ORG}
+      - INFLUX_BUCKET=${INFLUX_BUCKET}
+      - INFLUX_TOKEN=${INFLUX_TOKEN}
     depends_on:
       - acq-indus-influxdb
       - acq-indus-loki
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
     restart: always
-
-  # ThingsBoard (plateforme IOT)
-  acq-indus-thingsboard:
-    image: thingsboard/tb-postgres:4.2.1
-    container_name: acq-indus-thingsboard
-    ports:
-      - "9090:9090"
-      - "1884:1883"
-    environment:
-      - TB_QUEUE_TYPE=in-memory
-      - TB_INSTALL_DB=true  # On lui demande d'installer au démarrage (====> true uniquement au 1er démarrage)
-      - JAVA_OPTS=-Xms1024M -Xmx2048M # On bride la RAM pour plus de fluidité
-    volumes:
-      - thingsboard_data:/data
-      - thingsboard_logs:/var/log/thingsboard
-    restart: always
-
-  # Passerelle vers le service ThingsBoard
-  acq-indus-thingsboard-gateway:
-    image: thingsboard/tb-gateway:3.8.3
-    container_name: acq-indus-thingsboard-gateway
-    depends_on:
-      - acq-indus-thingsboard
-    environment:
-      - TB_GW_HOST=acq-indus-thingsboard
-      - TB_GW_PORT=1883
-      - TB_GW_ACCESS_TOKEN=${THINGSBOARD_GATEWAY_TOKEN}
-      - TB_GW_REMOTE_CONFIGURATION=false
-    volumes:
-      - ./thingsboard-gateway/config:/tb-gateway/config
-      - thingsboard_gw_logs:/tb-gateway/logs
-    restart: always
+    networks:
+      - acq-network
 
   # Le moteur de stockage des logs
   acq-indus-loki:
@@ -135,6 +127,10 @@ services:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
     restart: always
+    volumes:
+      - loki_data:/loki
+    networks:
+      - acq-network
 
   # L'agent qui collecte les logs des conteneurs Docker
   acq-indus-promtail:
@@ -147,6 +143,8 @@ services:
     depends_on:
       - acq-indus-loki
     restart: always
+    networks:
+      - acq-network
 
   # Web portal
   acq-indus-portal:
@@ -155,11 +153,17 @@ services:
     ports:
       - "8080:80" # Accessible sur http://localhost:8080
     restart: always
+    networks:
+      - acq-network
 
 
 volumes:
   influx_data:
   grafana_data:
-  thingsboard_data:     # Pour persister la configuration et les alarmes de TB
-  thingsboard_logs:
-  thingsboard_gw_logs:
+  loki_data:
+  mosquitto_data:
+  mosquitto_log:
+
+networks:
+  acq-network:
+    driver: bridge
