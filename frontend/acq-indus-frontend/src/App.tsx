@@ -46,7 +46,7 @@ const App = () => {
           ) : (
              // Ecrire "d-solo" avoir uniquement le panel sans les menus, "d" pour le dashboard complet
              <iframe 
-               src="http://localhost:3001/d/ffn49xjne0ao0c/new-dashboard?orgId=1" 
+               src="http://localhost:3001/d/acq-indus-tunnel-dashboard/supervision-ventilateurs?orgId=1&kiosk" 
                style={{ width: '100%', height: '80vh', border: 'none', borderRadius: '8px' }}
              />
           )}

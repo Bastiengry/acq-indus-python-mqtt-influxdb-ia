@@ -1,29 +1,44 @@
 import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { METRIC_COLORS } from './Constants';
 
-interface VibrationChartProps {
-  currentVibe: number;
+interface DataChartProps {
+  currentVibration: number;
+  currentTemperature: number;
+  currentCurrent: number;
 }
 
 interface DataPoint {
   time: string;
-  value: number;
+  vibration: number;
+  temperature: number;
+  current: number;
 }
 
-export default function VibrationChart({ currentVibe }: VibrationChartProps) {
+export default function DataChart({ currentVibration, currentTemperature, currentCurrent }: DataChartProps) {
   const [data, setData] = useState<DataPoint[]>([]);
 
-  const [prevVibe, setPrevVibe] = useState<number>(currentVibe);
+  const [prevVibration, setPrevVibration] = useState<number>(currentVibration);
+  const [prevTemperature, setPrevTemperature] = useState<number>(currentTemperature);
+  const [prevCurrent, setPrevCurrent] = useState<number>(currentCurrent);
 
-  // TECHNIQUE : On synchronise l'état directement si la prop change
-  // C'est la méthode recommandée pour éviter les useEffect en cascade
-  if (currentVibe !== prevVibe) {
-    setPrevVibe(currentVibe);
+  if (currentVibration !== prevVibration) {
+    setPrevVibration(currentVibration);
+  }
+
+  if (currentTemperature !== prevTemperature) {
+    setPrevTemperature(currentTemperature);
+  }
+
+  if (currentCurrent !== prevCurrent) {
+    setPrevCurrent(currentCurrent);
+  }
+
+  if (currentVibration !== prevVibration || currentTemperature !== prevTemperature || currentCurrent !== prevCurrent) {
     const now = new Date();
     const timeStr = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
-    
     setData(prev => {
-      const next = [...prev, { time: timeStr, value: currentVibe }];
+      const next = [...prev, { time: timeStr, vibration: currentVibration, temperature: currentTemperature, current: currentCurrent }];
       return next.slice(-20); 
     });
   }
@@ -31,7 +46,7 @@ export default function VibrationChart({ currentVibe }: VibrationChartProps) {
   return (
     <div className="bg-slate-800 p-4 rounded-lg shadow-inner w-full flex flex-col">
         <h3 className="text-slate-400 text-sm font-semibold mb-4 uppercase tracking-wider">
-        Vibration (mm/s)
+        Données en temps réel
         </h3>
         
         {/* On force la hauteur ici pour que Recharts "existe" */}
@@ -58,8 +73,24 @@ export default function VibrationChart({ currentVibe }: VibrationChartProps) {
             />
             <Line 
                 type="monotone" 
-                dataKey="value" 
-                stroke="#38bdf8" 
+                dataKey="vibration" 
+                stroke={METRIC_COLORS.vibration}
+                strokeWidth={2} 
+                dot={false}
+                isAnimationActive={false}
+            />
+            <Line 
+                type="monotone" 
+                dataKey="temperature" 
+                stroke={METRIC_COLORS.temperature}
+                strokeWidth={2} 
+                dot={false}
+                isAnimationActive={false}
+            />
+            <Line 
+                type="monotone" 
+                dataKey="current" 
+                stroke={METRIC_COLORS.current}
                 strokeWidth={2} 
                 dot={false}
                 isAnimationActive={false}

@@ -4,6 +4,7 @@ providers:
   - name: 'POC Dashboards'
     orgId: 1
     folder: 'Industrial Monitoring' # Grafana va créer ce dossier s'il manque
+    folderUid: 'industrial-monitoring-folder'
     type: file
     disableDeletion: false
     editable: true

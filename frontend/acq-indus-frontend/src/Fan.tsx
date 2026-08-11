@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import Scene from './components/Three/Scene';
-import VibrationChart from './components/Dashboard/VibrationChart';
+import DataChart from './components/Dashboard/DataChart';
+import DataCards from './components/Dashboard/DataCards';
 
 export default function Fan() {
   const [telemetry, setTelemetry] = useState({
     vibration: 0,
+    temperature: 0,
+    current: 0,
+    faulty_feature: null,
     health_status: 'OK'
   });
 
@@ -12,10 +16,13 @@ export default function Fan() {
     // Fonction pour récupérer les données du "Cerveau" (FastAPI)
     const fetchData = async () => {
       try {
-        const response = await fetch('/ai-api/health/TUNNEL_NORD_01');
+        const response = await fetch('/ai-api/data-with-anomaly-detection/TUNNEL_NORD_01');
         const data = await response.json();
         setTelemetry({
           vibration: data.last_vibration || 0, 
+          temperature: data.last_temperature || 0, 
+          current: data.last_current || 0, 
+          faulty_feature: data.faulty_feature || null,
           health_status: data.health_status || 'OK'
         });
       } catch (error) {
@@ -43,12 +50,12 @@ export default function Fan() {
 
       {/* Côté droit : Le Dashboard */}
       <div className="w-200 bg-slate-900 border-l border-slate-800 p-6 flex flex-col gap-6">
-        <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
-          <p className="text-slate-400 text-xs uppercase tracking-widest mb-1">Vibration Actuelle</p>
-          <p className="text-5xl font-light text-cyan-400">{telemetry.vibration?.toFixed(2)} <span className="text-lg text-slate-500">mm/s</span></p>
-        </div>
+        <DataCards currentVibration={telemetry.vibration} currentTemperature={telemetry.temperature} currentCurrent={telemetry.current} faultyFeature={telemetry?.faulty_feature}/>
         
-        <VibrationChart currentVibe={telemetry.vibration} />
+        <DataChart 
+          currentVibration={telemetry.vibration} 
+          currentTemperature={telemetry.temperature} 
+          currentCurrent={telemetry.current}/>
         
         <div className="mt-auto p-4 bg-slate-950 rounded-lg text-white text-slate-600 font-mono">
           SYSTEM_LOG: Monitoring active... <br/>
