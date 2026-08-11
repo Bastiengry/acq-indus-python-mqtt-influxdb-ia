@@ -90,12 +90,14 @@ sudo docker exec -it acq-indus-mosquitto mosquitto_sub -h localhost -t "#" -v
 
 
 # Grafana : afficher les logs
+**==> AUTOCONFIGURE DANS LE docker-compose.yml (et via un fichier de configuration)**
+**==> PASSER DIRECTEMENT AU POINT 4 POUR VISUALISER LES LOGS
 1. Se connecter à grafana à l'adresse "http://localhost:3001/"
 2. Connexion : Login "admin" / Password "admin".
 3. Ajouter une source de données :
 	- Aller dans "Connections > Data Sources".
 	- Cliquer sur "Add new data source".
-	- Choisis "Loki".
+	- Choisir "Loki".
 	- Paramétrage Loki :
 		* URL : http://acq-indus-loki:3100 (on utilise le nom du container).
 		* Cliquer sur "Save & Test" : Si le message est vert, la configuration est correcte.

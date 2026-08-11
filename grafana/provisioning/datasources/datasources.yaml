@@ -15,3 +15,12 @@ datasources:
       token: ${INFLUX_TOKEN} 
     isDefault: true
     editable: true # Permet de la modifier quand même depuis l'interface si besoin
+  - name: Loki
+    type: loki
+    uid: loki-datasource
+    access: proxy
+    url: http://acq-indus-loki:3100
+    jsonData:
+      maxLines: 1000
+    isDefault: false
+    editable: true
