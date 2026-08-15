@@ -7,11 +7,11 @@ services:
       - acq-indus-mosquitto
     environment:
       - MQTT_BROKER=acq-indus-mosquitto
-      - FAN_ID=TUNNEL_NORD_01
+      - FAN_ID=FAN_01
     restart: always
     networks:
       - acq-network
- 
+
   # Le Broker MQTT (Le facteur qui distribue les messages)
   acq-indus-mosquitto:
     image: eclipse-mosquitto:2.0.18
@@ -19,7 +19,7 @@ services:
     ports:
       - "1883:1883"
     volumes:
-      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
     networks:
@@ -42,7 +42,7 @@ services:
       - influx_data:/var/lib/influxdb2
     networks:
       - acq-network
-      
+
   # Le pont entre MQTT et InfluxDB
   acq-indus-telegraf:
     image: telegraf:1.28
@@ -73,10 +73,14 @@ services:
       - INFLUXDB_ORG=bg_soft
       - INFLUXDB_BUCKET=fan_telemetry
       - INFLUXDB_URL=http://acq-indus-influxdb:8086
+      - NEO4J_URI=bolt://acq-indus-neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=password123
       - AI_API_FILTER_ADDR="0.0.0.0"
       - AI_API_PORT=8000
     depends_on:
       - acq-indus-influxdb
+      - acq-indus-neo4j
     ports:
       - "8000:8000"
     restart: always
@@ -88,23 +92,21 @@ services:
     build: ./frontend/acq-indus-frontend
     container_name: acq-indus-frontend-supervision
     ports:
-      - "8081:80" # Accessible sur http://localhost:8081
+      - "8081:80"
     depends_on:
-      - acq-indus-py-ia-brain-api # Attend que l'API soit prête
+      - acq-indus-py-ia-brain-api
     restart: always
     networks:
       - acq-network
-    
+
   # Visualisation avancée des données
   acq-indus-grafana:
     image: grafana/grafana:10.4.2
     container_name: acq-indus-grafana
     ports:
-      - "3001:3000" # On utilise 3001 pour éviter tout conflit
-    env_file:
-      - .env
+      - "3001:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin # Mot de passe par défaut
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_SECURITY_ALLOW_EMBEDDING=true
       - INFLUX_ORG=${INFLUX_ORG}
       - INFLUX_BUCKET=${INFLUX_BUCKET}
@@ -151,11 +153,25 @@ services:
     build: ./frontend/acq-indus-portal
     container_name: acq-indus-portal
     ports:
-      - "8080:80" # Accessible sur http://localhost:8080
+      - "8080:80"
     restart: always
     networks:
       - acq-network
 
+  # Graphe de Connaissances / Ontologie IoT
+  acq-indus-neo4j:
+    image: neo4j:5.18.0
+    container_name: acq-indus-neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/password123
+    volumes:
+      - neo4j:/data
+    restart: always
+    networks:
+      - acq-network
 
 volumes:
   influx_data:
@@ -163,6 +179,7 @@ volumes:
   loki_data:
   mosquitto_data:
   mosquitto_log:
+  neo4j:
 
 networks:
   acq-network:

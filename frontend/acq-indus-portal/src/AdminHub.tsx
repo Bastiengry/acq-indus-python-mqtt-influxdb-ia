@@ -85,6 +85,30 @@ export default function AdminHub() {
         </svg>
       ),
     },
+    {
+      title: "Neo4j Graph Explorer",
+      description:
+        "Base de données orientée graphe. Permet de visualiser l'ontologie IoT, la topologie du réseau de ventilation (tunnels, zones, capteurs) et d'exécuter des requêtes Cypher.",
+      url: "http://localhost:7474", // Port web configuré dans docker-compose
+      isInternal: false,
+      color: "from-sky-500 to-blue-600",
+      icon: (
+        <svg
+          className="w-6 h-6 text-white"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M13 10V3L4 14h7v7l9-11h-7z"
+          ></path>
+        </svg>
+      ),
+    },
   ];
 
   // SCÉNARIO UTILISATEUR : écran de transition pendant la redirection

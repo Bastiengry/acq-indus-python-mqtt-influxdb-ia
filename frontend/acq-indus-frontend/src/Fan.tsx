@@ -16,7 +16,7 @@ export default function Fan() {
     // Fonction pour récupérer les données du "Cerveau" (FastAPI)
     const fetchData = async () => {
       try {
-        const response = await fetch('/ai-api/data-with-anomaly-detection/TUNNEL_NORD_01');
+        const response = await fetch('/ai-api/data-with-anomaly-detection/FAN_01');
         const data = await response.json();
         setTelemetry({
           vibration: data.last_vibration || 0, 
@@ -40,7 +40,7 @@ export default function Fan() {
       {/* Côté gauche : La 3D */}
       <div className="flex-grow relative">
         <div className="absolute top-8 left-8 z-10 pointer-events-none">
-          <h1 className="text-4xl font-bold tracking-tighter italic">TUNNEL NORTH - FAN 01</h1>
+          <h1 className="text-4xl font-bold tracking-tighter italic">FAN 01</h1>
           <p className={`text-xl font-mono ${telemetry.health_status === 'CRITICAL' ? 'text-red-500 animate-pulse' : 'text-emerald-400'}`}>
             STATUT : {telemetry.health_status}
           </p>

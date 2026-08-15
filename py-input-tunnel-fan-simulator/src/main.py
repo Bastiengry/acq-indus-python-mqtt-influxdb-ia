@@ -40,6 +40,7 @@ class TunnelFanSimulator:
             "vibration": round(vibration, 3),
             "temperature": round(temp, 2),
             "current": round(current, 2),
+            "location": "NORTH TUNNEL",
             "status": "warning" if vibration > 3.0 else "nominal"
         }
 

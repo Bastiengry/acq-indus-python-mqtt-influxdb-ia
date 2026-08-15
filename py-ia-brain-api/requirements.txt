@@ -3,3 +3,5 @@ uvicorn
 pandas
 scikit-learn
 influxdb-client
+neo4j==5.18.0
+apscheduler

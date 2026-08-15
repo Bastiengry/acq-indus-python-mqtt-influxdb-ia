@@ -67,7 +67,7 @@ sudo docker exec -it acq-indus-mosquitto mosquitto_sub -h localhost -t "#" -v
 
 # Grafana : afficher un dashboard avec les données du capteur d'entrée
 **==> AUTOCONFIGURE DANS LE docker-compose.yml (et via un fichier de configuration)**
-1. Se connecter à grafana à l'adresse "http://localhost:3001/"
+1. Se connecter à Grafana à l'adresse "http://localhost:3001/"
 2. Connexion : Login "admin" / Password "admin".
 3. Créer un Dashboard :
 	- Aller dans "Connections > Dashboards".
@@ -92,7 +92,7 @@ sudo docker exec -it acq-indus-mosquitto mosquitto_sub -h localhost -t "#" -v
 # Grafana : afficher les logs
 **==> AUTOCONFIGURE DANS LE docker-compose.yml (et via un fichier de configuration)**
 **==> PASSER DIRECTEMENT AU POINT 4 POUR VISUALISER LES LOGS
-1. Se connecter à grafana à l'adresse "http://localhost:3001/"
+1. Se connecter à Grafana à l'adresse "http://localhost:3001/"
 2. Connexion : Login "admin" / Password "admin".
 3. Ajouter une source de données :
 	- Aller dans "Connections > Data Sources".
@@ -111,7 +111,7 @@ sudo docker exec -it acq-indus-mosquitto mosquitto_sub -h localhost -t "#" -v
 
 # Grafana : configuration des alarmes
 **==> AUTOCONFIGURE DANS LE docker-compose.yml (et via un fichier de configuration)**
-1. Se connecter à grafana à l'adresse "http://localhost:3001/"
+1. Se connecter à Grafana à l'adresse "http://localhost:3001/"
 2. Connexion : Login "admin" / Password "admin".
 3. Ajouter un point de contact :
 	- Aller dans le menu "Alerting >> Contact points".
@@ -162,3 +162,9 @@ sudo docker exec -it acq-indus-mosquitto mosquitto_sub -h localhost -t "#" -v
 
 # Supervision frontend
 1. Pour visualiser le frontend de supervision, se connecter à l'adresse "http://localhost:8081" ou cliquer sur le lien dans l'application de portail web
+
+# Neo4j (knowledge graph)
+1. Se connecter à l'IHM à l'adresse "http://localhost:7474"
+2. Utilisateur / mot de passe : neo4j / password123
+3. Dans la barre de recherche en haut, pour voir les topologies, taper la requête CIPHER : "MATCH (n) RETURN n"
+3. Dans la barre de recherche en haut, pour supprimer les topologies, taper la requête CIPHER : "MATCH (n) DETACH DELETE n"
