@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { METRIC_COLORS } from './Constants';
 
 interface DataChartProps {
+  sensorId: string;
   currentVibration: number;
   currentTemperature: number;
   currentCurrent: number;
@@ -15,9 +16,9 @@ interface DataPoint {
   current: number;
 }
 
-export default function DataChart({ currentVibration, currentTemperature, currentCurrent }: DataChartProps) {
+export default function DataChart({ sensorId, currentVibration, currentTemperature, currentCurrent }: DataChartProps) {
   const [data, setData] = useState<DataPoint[]>([]);
-
+  const [prevSensorId, setPrevSensorId] = useState<string>(sensorId);
   const [prevVibration, setPrevVibration] = useState<number>(currentVibration);
   const [prevTemperature, setPrevTemperature] = useState<number>(currentTemperature);
   const [prevCurrent, setPrevCurrent] = useState<number>(currentCurrent);
@@ -37,10 +38,15 @@ export default function DataChart({ currentVibration, currentTemperature, curren
   if (currentVibration !== prevVibration || currentTemperature !== prevTemperature || currentCurrent !== prevCurrent) {
     const now = new Date();
     const timeStr = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
-    setData(prev => {
-      const next = [...prev, { time: timeStr, vibration: currentVibration, temperature: currentTemperature, current: currentCurrent }];
-      return next.slice(-20); 
-    });
+    if (sensorId === prevSensorId) {
+      setData(prev => {
+        const next = [...prev, { time: timeStr, vibration: currentVibration, temperature: currentTemperature, current: currentCurrent }];
+        return next.slice(-20); 
+      });
+    } else {
+      setPrevSensorId(sensorId);
+      setData([ { time: timeStr, vibration: currentVibration, temperature: currentTemperature, current: currentCurrent }]);
+    }
   }
 
   return (

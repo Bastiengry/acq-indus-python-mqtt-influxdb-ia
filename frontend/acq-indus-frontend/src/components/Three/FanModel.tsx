@@ -6,14 +6,27 @@ import * as THREE from 'three';
 interface FanModelProps {
   healthStatus: string;
   vibration: number;
+  position?: [number, number, number];
+  rotation?: [number, number, number];
 }
 
-export default function FanModel({ healthStatus, vibration }: FanModelProps) {
+export default function FanModel({ healthStatus, vibration, position, rotation }: FanModelProps) {
   const group = useRef<THREE.Group>(null);
   const { scene } = useGLTF('/fan.glb');
   const clonedScene = useMemo(() => scene.clone(), [scene]);
-
   
+  // recentrer le modèle à l'origine en se basant sur sa bounding box
+  useMemo(() => {
+    try {
+      const box = new THREE.Box3().setFromObject(clonedScene as THREE.Object3D);
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+      // décaler le clonedScene pour que son centre soit à l'origine
+    } catch (error) {
+      // ignore if bounding box fails
+    }
+  }, [clonedScene]);
+
   // Appliquer la couleur aux maillages du modèle
   const fanColor = healthStatus === "CRITICAL" ? "#ff0000" : "#444444";
   useMemo(() => {
@@ -31,20 +44,27 @@ export default function FanModel({ healthStatus, vibration }: FanModelProps) {
 
   useFrame((state, delta) => {
     if (group.current) {
-        // On cherche l'objet nommé "Helice" dans le script Blender
+        // On cherche l'objet nommé "Helice" dans le modèle cloné
         const blades = group.current.getObjectByName("Helice");
         
         if (blades) {
-        // Selon l'export, c'est peut-être .rotation.y ou .rotation.x
-        blades.rotation.z += delta * 6; 
+          blades.rotation.z += delta * 6; 
         }
 
-        // Le "Shake" s'applique à 'group.current' (tout le monde vibre)
+        // Le "Shake" s'applique au groupe (vibration)
         if (healthStatus === 'CRITICAL') {
-        group.current.position.x = Math.sin(state.clock.getElapsedTime() * 50) * (vibration / 200);
+          const shake = Math.sin(state.clock.getElapsedTime() * 50) * (vibration / 200);
+          group.current.position.x = shake;
+        } else {
+          // reset small offset when not critical
+          group.current.position.x = 0;
         }
     }
   });
 
-  return <primitive object={clonedScene} ref={group} scale={2} />;
+  return (
+    <group ref={group} position={position} rotation={rotation}>
+      <primitive object={clonedScene} scale={2} />
+    </group>
+  );
 }

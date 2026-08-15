@@ -10,6 +10,8 @@ from influxdb_client import InfluxDBClient
 from neo4j import GraphDatabase
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import uvicorn
+from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
 
 # --- Configuration des Logs ---
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +31,10 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password123")
 # Clients de base de données
 influx_client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
 neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+
+
+class ChatMessage(BaseModel):
+    message: str
 
 
 def run_sync_logic():
@@ -251,6 +257,81 @@ def get_fan_context(fan_id: str):
                 raise HTTPException(status_code=404, detail="Ventilateur non trouvé dans le graphe")
             return dict(result)
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chat")
+async def chat_bot(payload: ChatMessage):
+    user_msg = payload.message.lower().strip()
+    
+    try:
+        # Intention 1 : Demande de liste des capteurs
+        if "capteur" in user_msg and ("liste" in user_msg or "tous" in user_msg or "quelles" in user_msg or "quels" in user_msg):
+            query = """
+            MATCH (s:Sensor)-[:MONITORS]->(f:Fan)
+            RETURN s.id as sensor_id, s.type as type, f.id as fan_id
+            ORDER BY f.id, s.type
+            """
+            with neo4j_driver.session() as session:
+                results = session.run(query).data()
+                
+            if not results:
+                return {"reply": "Aucun capteur n'a été trouvé dans le graphe."}
+                
+            formatted_list = [
+                f"• **{r['sensor_id']}** (Type: `{r['type']}`) — Surveille: `{r['fan_id']}`"
+                for r in results
+            ]
+            reply_text = f"Voici la liste des **{len(results)} capteurs** détectés dans la topologie :\n\n" + "\n".join(formatted_list)
+            return {"reply": reply_text}
+
+        # Intention 2 : Demande de liste des ventilateurs / équipements
+        elif "ventilateur" in user_msg or "fan" in user_msg or "équipement" in user_msg:
+            query = """
+            MATCH (f:Fan)-[:LOCATED_IN]->(t:Tunnel)
+            OPTIONAL MATCH (f)-[:HAS_SENSOR]->(s:Sensor)
+            RETURN f.id as fan_id, t.name as tunnel, count(s) as nb_sensors
+            ORDER BY f.id
+            """
+            with neo4j_driver.session() as session:
+                results = session.run(query).data()
+                
+            if not results:
+                return {"reply": "Aucun ventilateur trouvé."}
+                
+            formatted_list = [
+                f"• **{r['fan_id']}** dans le tunnel **{r['tunnel']}** ({r['nb_sensors']} capteurs associés)"
+                for r in results
+            ]
+            return {"reply": "Voici les ventilateurs enregistrés :\n\n" + "\n".join(formatted_list)}
+
+        # Intention 3 : Demande sur les tunnels / localisations
+        elif "tunnel" in user_msg or "localisation" in user_msg:
+            query = """
+            MATCH (t:Tunnel)<-[:LOCATED_IN]-(f:Fan)
+            RETURN t.name as tunnel, collect(f.id) as fans
+            """
+            with neo4j_driver.session() as session:
+                results = session.run(query).data()
+                
+            formatted_list = [
+                f"• **{r['tunnel']}** : {', '.join(r['fans'])}"
+                for r in results
+            ]
+            return {"reply": "Répartition des équipements par tunnel :\n\n" + "\n".join(formatted_list)}
+
+        # Fallback si l'intention n'est pas reconnue
+        else:
+            return {
+                "reply": (
+                    "Je suis l'assistant de supervision du réseau. Voici quelques exemples de questions que vous pouvez me poser :\n\n"
+                    "- *\"Donne-moi la liste des capteurs\"*\n"
+                    "- *\"Quels sont les ventilateurs ?\"*\n"
+                    "- *\"Liste des tunnels\"*"
+                )
+            }
+
+    except Exception as e:
+        logger.error(f"Erreur Chatbot: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

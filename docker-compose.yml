@@ -7,7 +7,6 @@ services:
       - acq-indus-mosquitto
     environment:
       - MQTT_BROKER=acq-indus-mosquitto
-      - FAN_ID=FAN_01
     restart: always
     networks:
       - acq-network

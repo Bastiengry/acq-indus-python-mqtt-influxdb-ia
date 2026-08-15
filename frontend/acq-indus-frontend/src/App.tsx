@@ -1,10 +1,19 @@
 import { useState } from 'react';
-import Fan from './Fan';
+import Fans from './Fans';
+import Chat from './Chat';
 import './App.css';
 
 const App = () => {
   const [isOpen, setIsOpen] = useState(true);
   const [activeView, setActiveView] = useState('monitor');
+  // Exemple : plusieurs capteurs disponibles
+  const sensors = [
+    { id: 'FAN_01', label: 'FAN 01' },
+    { id: 'FAN_02', label: 'FAN 02' },
+    { id: 'FAN_03', label: 'FAN 03' },
+    { id: 'FAN_04', label: 'FAN 04' },
+  ];
+  const [selectedSensorIndex, setSelectedSensorIndex] = useState(0);
 
   return (
     <div className="w-full h-full flex bg-white margin-0">
@@ -28,6 +37,11 @@ const App = () => {
             style={navButtonStyle(activeView === 'grafana')}>
             📈 Analyses Grafana
           </button>
+          <button 
+            onClick={() => setActiveView('chat')}
+            style={navButtonStyle(activeView === 'chat')}>
+            💬 Chat IA
+          </button>
         </nav>
       </div>
 
@@ -35,20 +49,36 @@ const App = () => {
       <div className="flex-1 flex flex-col">
         <header className="p-4 flex items-center bg-[#34495e] text-white">
           <button onClick={() => setIsOpen(!isOpen)} style={{ marginRight: '15px', cursor: 'pointer' }}>☰</button>
-          <h2 style={{ margin: 0 }}>{activeView === 'monitor' ? 'Live Monitoring' : 'Grafana Analytics'}</h2>
+          <h2 className="flex-1" style={{ margin: 0 }}>{activeView === 'monitor' ? 'Live Monitoring' : 'Grafana Analytics'}</h2>
+          {activeView === 'monitor' && (
+            <select
+              value={selectedSensorIndex}
+              onChange={(e) => setSelectedSensorIndex(Number(e.target.value))}
+              className="bg-[#2c3e50] text-white px-3 py-2 rounded"
+              style={{ marginLeft: '12px' }}
+            >
+              {sensors.map((s, idx) => (
+                <option key={s.id} value={idx}>{s.label ?? s.id ?? 'UNKNOWN'}</option>
+              ))}
+            </select>
+          )}
         </header>
 
         <main className="flex-1 p-4 overflow-auto">
-          {activeView === 'monitor' ? (
+          {activeView === 'monitor' && (
              <div id="fan">
-               <Fan />
+               <Fans sensors={sensors} activeIndex={selectedSensorIndex} />
              </div>
-          ) : (
+          )}
+          {activeView === 'grafana' && (
              // Ecrire "d-solo" avoir uniquement le panel sans les menus, "d" pour le dashboard complet
              <iframe 
                src="http://localhost:3001/d/acq-indus-tunnel-dashboard/supervision-ventilateurs?orgId=1&kiosk" 
                style={{ width: '100%', height: '80vh', border: 'none', borderRadius: '8px' }}
              />
+          )}
+          {activeView === 'chat' && (
+             <Chat />
           )}
         </main>
       </div>
