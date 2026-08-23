@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import Scene from './components/Three/Scene';
 import DataChart from './components/Dashboard/DataChart';
 import DataCards from './components/Dashboard/DataCards';
+import type { TelemetryPoint } from './types/TelemetryPoint';
 
 type FanProps = { sensorId?: string; label?: string };
 
 export default function Fan({ sensorId = 'UNKNOWN', label = 'UNKNOWN' }: FanProps) {
-  const [telemetry, setTelemetry] = useState({
+  const [telemetry, setTelemetry] = useState<TelemetryPoint>({
     vibration: 0,
     temperature: 0,
     current: 0,

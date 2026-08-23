@@ -1,0 +1,161 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Horodatage"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "labels_fan_id"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Équipement"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "labels_alertname"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Nom Alerte"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Statut"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "annotations_summary"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Résumé"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "annotations_description"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Description"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-datasource"
+          },
+          "query": "from(bucket: \"fan_telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"device_alarms\")\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> drop(columns: [\"_start\", \"_stop\", \"_measurement\", \"host\"])\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)",
+          "refId": "A"
+        }
+      ],
+      "title": "Historique des Alarmes Équipements",
+      "type": "table"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [
+    "industrial",
+    "alarms"
+  ],
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Industrial Alarms Dashboard",
+  "uid": "industrial-alarms-db"
+}
