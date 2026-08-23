@@ -1,10 +1,51 @@
+import os
+import joblib
+import numpy as np
 import pandas as pd
 from sklearn.ensemble import IsolationForest
 from app.repositories.influx_repo import InfluxRepository
 
 class AnomalyService:
-    def __init__(self):
+    def __init__(self, model_dir: str = "models"):
         self.influx_repo = InfluxRepository()
+        self.model_dir = model_dir
+        os.makedirs(self.model_dir, exist_ok=True)
+        self._models_cache = {}
+
+    def _get_model_path(self, fan_id: str) -> str:
+        return os.path.join(self.model_dir, f"isolation_forest_{fan_id}.joblib")
+
+    def _load_model(self, fan_id: str):
+        if fan_id in self._models_cache:
+            return self._models_cache[fan_id]
+
+        model_path = self._get_model_path(fan_id)
+        if os.path.exists(model_path):
+            model = joblib.load(model_path)
+            self._models_cache[fan_id] = model
+            return model
+        return None
+
+    def train_fan_model(self, fan_id: str, n_samples: int = 1000) -> bool:
+        """Méthode explicite pour générer le modèle de référence sain."""
+        np.random.seed(42)
+        vibrations = 2.5 + np.random.normal(0, 0.1, n_samples)
+        temperatures = 45.0 + np.random.normal(0, 0.5, n_samples)
+        currents = 12.0 + np.random.normal(0, 0.2, n_samples)
+
+        features = pd.DataFrame({
+            'vibration': vibrations,
+            'temperature': temperatures,
+            'current': currents
+        })
+
+        model = IsolationForest(contamination=0.01, random_state=42)
+        model.fit(features)
+
+        model_path = self._get_model_path(fan_id)
+        joblib.dump(model, model_path)
+        self._models_cache[fan_id] = model
+        return True
 
     def analyze_fan(self, fan_id: str):
         df = self.influx_repo.get_recent_data(fan_id, minutes=1440)
@@ -40,16 +81,19 @@ class AnomalyService:
             "data": records
         }
 
-        MIN_POINTS = 10
-        if len(features) < MIN_POINTS:
-            response["health_status"] = "WARMUP"
-            response["faulty_feature"] = None
-            response["ai_message"] = f"Apprentissage en cours ({len(features)}/{MIN_POINTS} points)"
+        # 1. Tentative de chargement du modèle
+        model = self._load_model(fan_id)
+
+        # 2. Pas de modèle = REFUS de prédire (pas d'entraînement caché)
+        if model is None:
+            response.update({
+                "health_status": "UNTRAINED",
+                "faulty_feature": None,
+                "ai_message": "Modèle non entraîné. Veuillez exécuter la phase d'apprentissage."
+            })
             return response
 
-        model = IsolationForest(contamination=0.05, random_state=42)
-        model.fit(features)
-        
+        # 3. Inférence stricte sur le modèle existant
         last_point = features.iloc[[-1]]
         if model.predict(last_point)[0] == -1:
             health_status = "CRITICAL"
