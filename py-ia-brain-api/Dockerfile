@@ -12,7 +12,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copie du code source
-COPY src/ ./src/
+COPY app/ ./app/
+
+ENV PYTHONPATH=/app
 
 # Lancement
-CMD ["python", "src/main.py"]
+CMD ["python", "app/main.py"]
