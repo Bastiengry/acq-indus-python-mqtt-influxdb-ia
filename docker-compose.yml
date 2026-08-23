@@ -1,12 +1,12 @@
 services:
-  # Simulateur de données d'entrée
-  acq-indus-py-input-simulator:
-    build: ./py-input-tunnel-fan-simulator
-    container_name: acq-indus-py-input-simulator
-    depends_on:
-      - acq-indus-mosquitto
-    environment:
-      - MQTT_BROKER=acq-indus-mosquitto
+  ##LLM local
+  acq-indus-ollama:
+    image: ollama/ollama:latest
+    container_name: acq-indus-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
     restart: always
     networks:
       - acq-network
@@ -21,6 +21,18 @@ services:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
+    networks:
+      - acq-network
+
+  # Simulateur de données d'entrée
+  acq-indus-py-input-simulator:
+    build: ./py-input-tunnel-fan-simulator
+    container_name: acq-indus-py-input-simulator
+    depends_on:
+      - acq-indus-mosquitto
+    environment:
+      - MQTT_BROKER=acq-indus-mosquitto
+    restart: always
     networks:
       - acq-network
 
@@ -63,6 +75,21 @@ services:
     networks:
       - acq-network
 
+  # Graphe de Connaissances / Ontologie IoT
+  acq-indus-neo4j:
+    image: neo4j:5.18.0
+    container_name: acq-indus-neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/password123
+    volumes:
+      - neo4j:/data
+    restart: always
+    networks:
+      - acq-network
+
   # API IA qui analyse les données à la recherche d'anomalies (isolation forest)
   acq-indus-py-ia-brain-api:
     build: ./py-ia-brain-api
@@ -80,6 +107,7 @@ services:
     depends_on:
       - acq-indus-influxdb
       - acq-indus-neo4j
+      - acq-indus-ollama
     ports:
       - "8000:8000"
     restart: always
@@ -157,27 +185,13 @@ services:
     networks:
       - acq-network
 
-  # Graphe de Connaissances / Ontologie IoT
-  acq-indus-neo4j:
-    image: neo4j:5.18.0
-    container_name: acq-indus-neo4j
-    ports:
-      - "7474:7474"
-      - "7687:7687"
-    environment:
-      - NEO4J_AUTH=neo4j/password123
-    volumes:
-      - neo4j:/data
-    restart: always
-    networks:
-      - acq-network
-
 volumes:
+  ollama_data:
+  mosquitto_data:
+  mosquitto_log:
   influx_data:
   grafana_data:
   loki_data:
-  mosquitto_data:
-  mosquitto_log:
   neo4j:
 
 networks:

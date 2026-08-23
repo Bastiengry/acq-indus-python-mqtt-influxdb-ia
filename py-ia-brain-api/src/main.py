@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 import asyncio
 from contextlib import asynccontextmanager
@@ -11,7 +12,7 @@ from neo4j import GraphDatabase
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import uvicorn
 from pydantic import BaseModel
-from fastapi import FastAPI, HTTPException
+import ollama
 
 # --- Configuration des Logs ---
 logging.basicConfig(level=logging.INFO)
@@ -28,9 +29,14 @@ NEO4J_URI = os.getenv("NEO4J_URI", "bolt://acq-indus-neo4j:7687")
 NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password123")
 
+# --- Configuration Ollama ---
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://acq-indus-ollama:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
+
 # Clients de base de données
 influx_client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
 neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+client_ollama = ollama.Client(host=OLLAMA_HOST)
 
 
 class ChatMessage(BaseModel):
@@ -41,7 +47,6 @@ def run_sync_logic():
     """Logique d'extraction InfluxDB et injection Neo4j (exécutée hors thread principal)."""
     logger.info("--> [SYNC] Interrogation d'InfluxDB pour mise à jour du graphe...")
     
-    # Requête Flux : conservation des tags fan_id, location et du field
     query = f'''
     from(bucket: "{INFLUX_BUCKET}")
       |> range(start: -30d)
@@ -54,7 +59,6 @@ def run_sync_logic():
         query_api = influx_client.query_api()
         tables = query_api.query(query)
         
-        # Structure : { fan_id: {"sensors": set(), "location": str} }
         topology = {}
         for table in tables:
             for record in table.records:
@@ -108,23 +112,16 @@ async def sync_influx_to_neo4j():
     await asyncio.to_thread(run_sync_logic)
 
 
-# Gestion du cycle de vie FastAPI (Lifespan)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialisation du scheduler dans l'event loop active de FastAPI
     scheduler = AsyncIOScheduler()
-    
-    # 1. Synchronisation initiale au démarrage
     await sync_influx_to_neo4j()
-    
-    # 2. Planification récurrente toutes les 20 secondes
     scheduler.add_job(sync_influx_to_neo4j, 'interval', seconds=20)
     scheduler.start()
     logger.info("--> [SCHEDULER] Planificateur démarré (fréquence: 20 secondes)")
     
     yield
     
-    # 3. Arrêt propre des ressources
     scheduler.shutdown()
     influx_client.close()
     neo4j_driver.close()
@@ -152,7 +149,13 @@ def get_recent_data(fan_id: str, minutes: int = 1440) -> pd.DataFrame:
       |> tail(n: 300)
     '''
     query_api = influx_client.query_api()
-    return query_api.query_data_frame(query)
+    result = query_api.query_data_frame(query)
+
+    if isinstance(result, list):
+        if not result:
+            return pd.DataFrame()
+        return pd.concat(result, ignore_index=True)
+    return result
 
 
 @app.post("/sync-topology")
@@ -259,80 +262,188 @@ def get_fan_context(fan_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# --- Outils d'aide pour le Chatbot LLM ---
+
+def tool_get_network_topology() -> str:
+    """Interroge Neo4j pour la topologie globale."""
+    query = """
+    MATCH (t:Tunnel)<-[:LOCATED_IN]-(f:Fan)
+    OPTIONAL MATCH (f)-[:HAS_SENSOR]->(s:Sensor)
+    RETURN t.name as tunnel, f.id as fan_id, collect(s.id) as sensors
+    """
+    try:
+        with neo4j_driver.session() as session:
+            results = session.run(query).data()
+            return json.dumps(results)
+    except Exception as e:
+        return f"Erreur Neo4j: {str(e)}"
+
+
+def tool_get_sensor_list() -> str:
+    """Interroge Neo4j pour la liste des capteurs."""
+    query = """
+    MATCH (s:Sensor)-[:MONITORS]->(f:Fan)
+    RETURN s.id as sensor_id, s.type as type, f.id as fan_id
+    ORDER BY f.id, s.type
+    """
+    try:
+        with neo4j_driver.session() as session:
+            results = session.run(query).data()
+            return json.dumps(results)
+    except Exception as e:
+        return f"Erreur Neo4j: {str(e)}"
+
+
+def resolve_fan_and_sensor(target_id: str):
+    """Résout le fan_id et extrait le type de capteur si renseigné."""
+    target_clean = target_id.strip()
+    
+    # Recherche dans Neo4j si target_clean est un Sensor
+    query_sensor = "MATCH (s:Sensor {id: $id})-[:MONITORS]->(f:Fan) RETURN f.id as fan_id, s.type as sensor_type"
+    with neo4j_driver.session() as session:
+        res = session.run(query_sensor, id=target_clean).single()
+        if res:
+            return res["fan_id"], res["sensor_type"].lower()
+            
+    # Extraction manuelle si suffixe d'un sous-type (_TEMPERATURE, _VIBRATION, _CURRENT)
+    for metric in ["temperature", "vibration", "current"]:
+        if target_clean.lower().endswith(f"_{metric}"):
+            fan_part = target_clean[:-len(metric)-1]
+            return fan_part, metric
+            
+    return target_clean, None
+
+
+async def tool_check_eqp_or_sensor_health(target_id: str) -> str:
+    """Vérifie la santé d'un équipement ou filtre par capteur spécifique."""
+    try:
+        fan_id, sensor_type = resolve_fan_and_sensor(target_id)
+        res = await get_data_and_detect_anomaly(fan_id)
+
+        # Si un capteur spécifique était visé, on ne renvoie que la métrique demandée
+        if sensor_type:
+            metric_key = f"last_{sensor_type}"
+            val = res.get(metric_key)
+            return json.dumps({
+                "sensor_id": target_id,
+                "fan_id": fan_id,
+                "sensor_type": sensor_type,
+                "value": val,
+                "timestamp": res.get("timestamp"),
+                "health_status": res.get("health_status"),
+                "is_anomalous": (res.get("faulty_feature") == sensor_type)
+            })
+
+        return json.dumps(res)
+    except Exception as e:
+        return f"Erreur analyse santé pour '{target_id}': {str(e)}"
+
+
+OLLAMA_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_network_topology",
+            "description": "Obtenir la structure globale du réseau (tunnels et équipements associés). À utiliser pour la vue d'ensemble.",
+            "parameters": {"type": "object", "properties": {}, "required": []}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_sensor_list",
+            "description": "Obtenir la liste détaillée de TOUS les capteurs avec leur type et l'équipement qu'ils surveillent.",
+            "parameters": {"type": "object", "properties": {}, "required": []}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_eqp_or_sensor_health",
+            "description": "Obtenir l'état de santé et les valeurs d'un équipement complet ou d'un capteur spécifique.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target_id": {
+                        "type": "string",
+                        "description": "L'identifiant exact de l'équipement (ex: FAN_01) ou du capteur (ex: FAN_01_TEMPERATURE)."
+                    }
+                },
+                "required": ["target_id"]
+            }
+        }
+    }
+]
+
+
 @app.post("/chat")
 async def chat_bot(payload: ChatMessage):
-    user_msg = payload.message.lower().strip()
+    user_msg = payload.message.strip()
     
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Tu es un assistant IA de supervision industrielle. "
+                "Tu as accès à des outils pour lire le graphe Neo4j et analyser les anomalies télémétriques. "
+                "Si l'utilisateur demande des informations sur un capteur précis (ex: FAN_04_TEMPERATURE), "
+                "donne uniquement la valeur et l'état de ce capteur sans détailler l'ensemble des autres capteurs. "
+                "Sois précis, utile et réponds toujours en français."
+            )
+        },
+        {"role": "user", "content": user_msg}
+    ]
+
     try:
-        # Intention 1 : Demande de liste des capteurs
-        if "capteur" in user_msg and ("liste" in user_msg or "tous" in user_msg or "quelles" in user_msg or "quels" in user_msg):
-            query = """
-            MATCH (s:Sensor)-[:MONITORS]->(f:Fan)
-            RETURN s.id as sensor_id, s.type as type, f.id as fan_id
-            ORDER BY f.id, s.type
-            """
-            with neo4j_driver.session() as session:
-                results = session.run(query).data()
-                
-            if not results:
-                return {"reply": "Aucun capteur n'a été trouvé dans le graphe."}
-                
-            formatted_list = [
-                f"• **{r['sensor_id']}** (Type: `{r['type']}`) — Surveille: `{r['fan_id']}`"
-                for r in results
-            ]
-            reply_text = f"Voici la liste des **{len(results)} capteurs** détectés dans la topologie :\n\n" + "\n".join(formatted_list)
-            return {"reply": reply_text}
+        response = await asyncio.to_thread(
+            client_ollama.chat,
+            model=OLLAMA_MODEL,
+            messages=messages,
+            tools=OLLAMA_TOOLS
+        )
 
-        # Intention 2 : Demande de liste des ventilateurs / équipements
-        elif "ventilateur" in user_msg or "fan" in user_msg or "équipement" in user_msg:
-            query = """
-            MATCH (f:Fan)-[:LOCATED_IN]->(t:Tunnel)
-            OPTIONAL MATCH (f)-[:HAS_SENSOR]->(s:Sensor)
-            RETURN f.id as fan_id, t.name as tunnel, count(s) as nb_sensors
-            ORDER BY f.id
-            """
-            with neo4j_driver.session() as session:
-                results = session.run(query).data()
-                
-            if not results:
-                return {"reply": "Aucun ventilateur trouvé."}
-                
-            formatted_list = [
-                f"• **{r['fan_id']}** dans le tunnel **{r['tunnel']}** ({r['nb_sensors']} capteurs associés)"
-                for r in results
-            ]
-            return {"reply": "Voici les ventilateurs enregistrés :\n\n" + "\n".join(formatted_list)}
+        message = response['message']
 
-        # Intention 3 : Demande sur les tunnels / localisations
-        elif "tunnel" in user_msg or "localisation" in user_msg:
-            query = """
-            MATCH (t:Tunnel)<-[:LOCATED_IN]-(f:Fan)
-            RETURN t.name as tunnel, collect(f.id) as fans
-            """
-            with neo4j_driver.session() as session:
-                results = session.run(query).data()
+        while message.get('tool_calls'):
+            messages.append(message)
+            
+            for tool in message['tool_calls']:
+                func_name = tool['function']['name']
+                raw_args = tool['function']['arguments']
                 
-            formatted_list = [
-                f"• **{r['tunnel']}** : {', '.join(r['fans'])}"
-                for r in results
-            ]
-            return {"reply": "Répartition des équipements par tunnel :\n\n" + "\n".join(formatted_list)}
+                # Sécurité si les arguments sont sérialisés en JSON string
+                arguments = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+                
+                if func_name == "get_network_topology":
+                    tool_result = await asyncio.to_thread(tool_get_network_topology)
+                elif func_name == "get_sensor_list":
+                    tool_result = await asyncio.to_thread(tool_get_sensor_list)
+                elif func_name == "check_eqp_or_sensor_health":
+                    target = arguments.get("target_id") or arguments.get("fan_id", "")
+                    tool_result = await tool_check_eqp_or_sensor_health(target)
+                else:
+                    tool_result = "Outil inconnu"
 
-        # Fallback si l'intention n'est pas reconnue
-        else:
-            return {
-                "reply": (
-                    "Je suis l'assistant de supervision du réseau. Voici quelques exemples de questions que vous pouvez me poser :\n\n"
-                    "- *\"Donne-moi la liste des capteurs\"*\n"
-                    "- *\"Quels sont les ventilateurs ?\"*\n"
-                    "- *\"Liste des tunnels\"*"
-                )
-            }
+                messages.append({
+                    "role": "tool",
+                    "content": str(tool_result)
+                })
+
+            # Prochain tour avec le LLM pour vérifier s'il demande d'autres outils ou conclut
+            response = await asyncio.to_thread(
+                client_ollama.chat,
+                model=OLLAMA_MODEL,
+                messages=messages,
+                tools=OLLAMA_TOOLS
+            )
+            message = response['message']
+
+        return {"reply": message['content']}
 
     except Exception as e:
-        logger.error(f"Erreur Chatbot: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Erreur Chatbot LLM: {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur du service LLM: {str(e)}")
 
 
 if __name__ == "__main__":

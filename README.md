@@ -15,6 +15,11 @@ Simulateur Python -> Broker MQTT (Mosquitto) -> | -> Telegraf (Collecteur) -> In
 ```
 
 
+# A REINSTALLER MANUELLEMENT LA PREMIERE FOIS (NON PRIS EN CHARGE PAR DOCKER COMPOSE)
+1. Générer le TOKEN InfluxDB
+2. Charger le modèle de LLM pour le chatbot
+
+
 # Génération du token dans influxdb
 1. Se connecter à influxdb à l'adresse "http://localhost:8086/"
 2. Saisir le login et le mot de passe (cf. docker-compose.yml)
@@ -162,6 +167,8 @@ sudo docker exec -it acq-indus-mosquitto mosquitto_sub -h localhost -t "#" -v
 
 # Supervision frontend
 1. Pour visualiser le frontend de supervision, se connecter à l'adresse "http://localhost:8081" ou cliquer sur le lien dans l'application de portail web
+
+2. Pour utiliser le chatbot, il faut installer le modèle du LLM : "docker exec -it acq-indus-ollama ollama run qwen2.5:3b"
 
 # Neo4j (knowledge graph)
 1. Se connecter à l'IHM à l'adresse "http://localhost:7474"
