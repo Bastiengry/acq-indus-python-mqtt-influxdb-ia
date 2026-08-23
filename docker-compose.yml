@@ -15,8 +15,6 @@ services:
   acq-indus-mosquitto:
     image: eclipse-mosquitto:2.0.18
     container_name: acq-indus-mosquitto
-    ports:
-      - "1883:1883"
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto_data:/mosquitto/data
