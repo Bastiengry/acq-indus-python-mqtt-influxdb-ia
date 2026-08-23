@@ -25,13 +25,21 @@ async def lifespan(app: FastAPI):
     # 2. Vérification / Entraînement initial des modèles de référence
     fans = ["FAN_01", "FAN_02", "FAN_03", "FAN_04"]
     for fan_id in fans:
-        model_path = anomaly_service._get_model_path(fan_id)
-        # On ne génère le modèle théorique QUE s'il n'existe pas encore sur disque
-        if not os.path.exists(model_path):
-            anomaly_service.train_fan_model(fan_id)
-            logger.info(f"--> [ML] Modèle théorique initialisé pour {fan_id}")
+        iso_path, clf_path = anomaly_service._get_model_paths(fan_id)
+
+        # Isolation Forest (Détection)
+        if not os.path.exists(iso_path):
+            anomaly_service.train_isolation_forest(fan_id)
+            logger.info(f"--> [ML] Isolation Forest initialisé pour {fan_id}")
         else:
-            logger.info(f"--> [ML] Modèle existant chargé pour {fan_id}")
+            logger.info(f"--> [ML] Isolation Forest chargé pour {fan_id}")
+
+        # Random Forest (Classification)
+        if not os.path.exists(clf_path):
+            anomaly_service.train_fault_classifier(fan_id)
+            logger.info(f"--> [ML] Random Forest Classifier initialisé pour {fan_id}")
+        else:
+            logger.info(f"--> [ML] Random Forest Classifier chargé pour {fan_id}")
 
     yield
     

@@ -11,6 +11,8 @@ export default function Fan({ sensorId = 'UNKNOWN', label = 'UNKNOWN' }: FanProp
     temperature: 0,
     current: 0,
     faulty_feature: null,
+    fault_label: null,
+    ai_message: 'Système nominal',
     health_status: 'OK'
   });
 
@@ -24,6 +26,8 @@ export default function Fan({ sensorId = 'UNKNOWN', label = 'UNKNOWN' }: FanProp
           temperature: data.last_temperature || 0, 
           current: data.last_current || 0, 
           faulty_feature: data.faulty_feature || null,
+          fault_label: data.fault_label || null,
+          ai_message: data.ai_message || 'Système nominal',
           health_status: data.health_status || 'OK'
         });
       } catch (error) {
@@ -68,10 +72,12 @@ export default function Fan({ sensorId = 'UNKNOWN', label = 'UNKNOWN' }: FanProp
           sensorId={sensorId}
         />
         
-        <div className="mt-auto p-3 bg-slate-950 rounded-lg text-slate-400 font-mono text-xs border border-slate-800">
-          SYSTEM_LOG: Monitoring active... <br/>
-          AI_MODEL: ISO-10816 Analysis <br/>
-          SOCKET_PORT: 8000
+        <div className="mt-auto p-3 bg-slate-950 rounded-lg text-slate-400 font-mono text-xs border border-slate-800 space-y-1">
+          <div>SYSTEM_LOG: Monitoring active...</div>
+          <div>AI_ANALYSIS: IsoForest + Random Forest</div>
+          <div className="text-slate-300">
+            DIAGNOSTIC: <span className={telemetry.health_status === 'CRITICAL' ? 'text-red-400 font-bold' : 'text-emerald-400'}>{telemetry.ai_message}</span>
+          </div>
         </div>
       </div>
     </div>
