@@ -1,16 +1,16 @@
-import { METRIC_COLORS } from "./Constants";
+import { METRIC_COLORS } from "./FanConstants";
 
 interface DataCardsProps {
-  currentVibration: number | null;
-  currentTemperature: number | null;
-  currentCurrent: number | null;
+  vibration: number | null | undefined;
+  temperature: number | null | undefined;
+  current: number | null | undefined;
   faultyFeature?: string | null;
 }
 
 export default function DataCards({ 
-  currentVibration, 
-  currentTemperature, 
-  currentCurrent,
+  vibration, 
+  temperature, 
+  current,
   faultyFeature 
 }: DataCardsProps) {
 
@@ -38,7 +38,7 @@ export default function DataCards({
           )}
         </div>
         <div className="text-3xl font-semibold font-mono tracking-tight" style={{ color: METRIC_COLORS.vibration }}>
-          {currentVibration != null ? currentVibration.toFixed(2) : '--'} 
+          {vibration != null ? vibration.toFixed(2) : '--'} 
           <span className="text-sm font-normal text-slate-500 ml-1.5">mm/s</span>
         </div>
       </div>
@@ -54,7 +54,7 @@ export default function DataCards({
           )}
         </div>
         <div className="text-3xl font-semibold font-mono tracking-tight" style={{ color: METRIC_COLORS.temperature }}>
-          {currentTemperature != null ? currentTemperature.toFixed(1) : '--'} 
+          {temperature != null ? temperature.toFixed(1) : '--'} 
           <span className="text-sm font-normal text-slate-500 ml-1.5">°C</span>
         </div>
       </div>
@@ -70,7 +70,7 @@ export default function DataCards({
           )}
         </div>
         <div className="text-3xl font-semibold font-mono tracking-tight" style={{ color: METRIC_COLORS.current }}>
-          {currentCurrent != null ? currentCurrent.toFixed(1) : '--'} 
+          {current != null ? current.toFixed(1) : '--'} 
           <span className="text-sm font-normal text-slate-500 ml-1.5">A</span>
         </div>
       </div>

@@ -11,12 +11,22 @@ providers:
     options:
       path: /etc/grafana/provisioning/dashboards/json_files/monitoring
 
-  - name: 'POC Dashboards - Alarm Grafana'
+  - name: 'POC Dashboards - Grafana Alert (Grafana Rules)'
     orgId: 1
-    folder: 'Industrial Alarm (calculated from Grafana rules, not from IA Isolation Forest)'
-    folderUid: 'industrial-alarm-folder'
+    folder: 'Industrial Alert (calculated from Grafana rules, not from IA Isolation Forest)'
+    folderUid: 'industrial-alert-folder'
     type: file
     disableDeletion: false
     editable: true
     options:
-      path: /etc/grafana/provisioning/dashboards/json_files/alarm
+      path: /etc/grafana/provisioning/dashboards/json_files/alert
+
+  - name: 'POC Dashboards - IA Estimations'
+    orgId: 1
+    folder: 'Industrial IA Estimations'
+    folderUid: 'industrial-ia-estimation-folder'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json_files/ia-estimation

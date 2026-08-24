@@ -3,14 +3,14 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
-interface FanModelProps {
+interface Fan3DProps {
   healthStatus: string;
   vibration: number;
   position?: [number, number, number];
   rotation?: [number, number, number];
 }
 
-export default function FanModel({ healthStatus, vibration, position, rotation }: FanModelProps) {
+export default function Fan3D({ healthStatus, vibration, position, rotation }: Fan3DProps) {
   const group = useRef<THREE.Group>(null);
   const { scene } = useGLTF('/fan.glb');
   const clonedScene = useMemo(() => scene.clone(), [scene]);
@@ -21,7 +21,7 @@ export default function FanModel({ healthStatus, vibration, position, rotation }
       const box = new THREE.Box3().setFromObject(clonedScene as THREE.Object3D);
       const center = new THREE.Vector3();
       box.getCenter(center);
-      // décaler le clonedScene pour que son centre soit à l'origine
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       // ignore if bounding box fails
     }

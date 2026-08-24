@@ -1,0 +1,197 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influxdb-datasource"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Horodatage"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "fan_id"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Équipement"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "health_status"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "État de Santé"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "fault_label"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Type de Défaut"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "faulty_feature"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Capteur Incriminé"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ai_message"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Diagnostic IA"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last_vibration"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Vibration (mm/s)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last_temperature"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Température (°C)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last_current"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Courant (A)"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influxdb-datasource"
+          },
+          "query": "from(bucket: \"fan_telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"fan_predictions\")\n  |> pivot(rowKey: [\"_time\", \"fan_id\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> drop(columns: [\"_start\", \"_stop\", \"_measurement\", \"host\"])\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)",
+          "refId": "A"
+        }
+      ],
+      "title": "Historique des Diagnostics & Prédictions IA",
+      "type": "table"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [
+    "industrial",
+    "ai_predictions"
+  ],
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Industrial AI Diagnostics Dashboard",
+  "uid": "industrial-ai-db"
+}

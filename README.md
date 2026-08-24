@@ -175,3 +175,9 @@ sudo docker exec -it acq-indus-mosquitto mosquitto_sub -h localhost -t "#" -v
 2. Utilisateur / mot de passe : neo4j / password123
 3. Dans la barre de recherche en haut, pour voir les topologies, taper la requête CIPHER : "MATCH (n) RETURN n"
 3. Dans la barre de recherche en haut, pour supprimer les topologies, taper la requête CIPHER : "MATCH (n) DETACH DELETE n"
+
+# Exemple de questions au chatbot
+- Quelle est la topologie ?
+- Quelle est la liste des capteurs ?
+- Quel est l'état de FAN_01 ?
+- Quelle est la liste des équipements ?

@@ -1,4 +1,4 @@
-import os
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,46 +7,56 @@ import uvicorn
 
 from app.core.config import influx_client, neo4j_driver, logger
 from app.services.sync_service import SyncService
-from app.services.anomaly_service import AnomalyService
+from app.services.fan_machine_learning_service import FanMachineLearningService
+from app.services.fan_service import FanService
 from app.controllers import telemetry_controller, topology_controller, chat_controller
 
 sync_service = SyncService()
-anomaly_service = AnomalyService()
+fan_machine_learning_service = FanMachineLearningService()
+fan_service = FanService()
+
+
+# Fonctions wrappers asynchrones propres pour le Scheduler
+async def scheduled_sync_neo4j():
+    await asyncio.to_thread(sync_service.sync_influx_to_neo4j)
+
+async def scheduled_ml_update():
+    await asyncio.to_thread(fan_machine_learning_service.update_last_predictions)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. Initialisation Neo4j Scheduler
+    # Lancement de la synchronisation initiale de Neo4j dans un thread dédié
+    await asyncio.to_thread(sync_service.sync_influx_to_neo4j)
+
+    # Configuration du Scheduler
     scheduler = AsyncIOScheduler()
-    await sync_service.sync_influx_to_neo4j()
-    scheduler.add_job(sync_service.sync_influx_to_neo4j, 'interval', seconds=20)
+
+    # Synchronisation Neo4j (toutes les 20s)
+    scheduler.add_job(
+        scheduled_sync_neo4j,
+        'interval',
+        seconds=20
+    )
+    logger.info("--> [SCHEDULER] Planificateur configuré pour mise à jour de Neo4j (20s)")
+
+    # Détection, auto-entraînement à la volée et prédictions ML (toutes les 5s)
+    scheduler.add_job(
+        scheduled_ml_update,
+        'interval',
+        seconds=5
+    )
+    logger.info("--> [SCHEDULER] Planificateur configuré pour prédictions ML & Auto-entraînement (5s)")
+
     scheduler.start()
-    logger.info("--> [SCHEDULER] Planificateur démarré (20s)")
-    
-    # 2. Vérification / Entraînement initial des modèles de référence
-    fans = ["FAN_01", "FAN_02", "FAN_03", "FAN_04"]
-    for fan_id in fans:
-        iso_path, clf_path = anomaly_service._get_model_paths(fan_id)
-
-        # Isolation Forest (Détection)
-        if not os.path.exists(iso_path):
-            anomaly_service.train_isolation_forest(fan_id)
-            logger.info(f"--> [ML] Isolation Forest initialisé pour {fan_id}")
-        else:
-            logger.info(f"--> [ML] Isolation Forest chargé pour {fan_id}")
-
-        # Random Forest (Classification)
-        if not os.path.exists(clf_path):
-            anomaly_service.train_fault_classifier(fan_id)
-            logger.info(f"--> [ML] Random Forest Classifier initialisé pour {fan_id}")
-        else:
-            logger.info(f"--> [ML] Random Forest Classifier chargé pour {fan_id}")
 
     yield
-    
+
     # Clean-up à l'arrêt
     scheduler.shutdown()
     influx_client.close()
     neo4j_driver.close()
+
 
 app = FastAPI(lifespan=lifespan)
 

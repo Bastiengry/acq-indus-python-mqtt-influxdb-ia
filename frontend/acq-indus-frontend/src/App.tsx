@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import Fans from './Fans';
-import Chat from './Chat';
+import FanPanelWrapper from './components/fan/FanPanelWrapper';
+import ChatPanel from './components/chat/ChatPanel';
 import './App.css';
+import GrafanaMeasuresIFramePanel from './components/grafana/GrafanaMeasuresIFramePanel';
+import GrafanaAlertsIFramePanel from './components/grafana/GrafanaAlertsIFramePanel';
+import GrafanaIAEstimationsIFramePanel from './components/grafana/GrafanaIAEstimationsIFramePanel';
 
 const App = () => {
   const [isOpen, setIsOpen] = useState(true);
@@ -30,12 +33,22 @@ const App = () => {
           <button 
             onClick={() => setActiveView('monitor')}
             style={navButtonStyle(activeView === 'monitor')}>
-            📊 Dashboard Live
+            ⚡ Dashboard Live
           </button>
           <button 
-            onClick={() => setActiveView('grafana')}
-            style={navButtonStyle(activeView === 'grafana')}>
-            📈 Analyses Grafana
+            onClick={() => setActiveView('grafana-history')}
+            style={navButtonStyle(activeView === 'grafana-history')}>
+            📊 Historique des mesures (Grafana)
+          </button>
+          <button 
+            onClick={() => setActiveView('grafana-alerts')}
+            style={navButtonStyle(activeView === 'grafana-alerts')}>
+            🔔 Historique des alertes Grafana
+          </button>
+          <button 
+            onClick={() => setActiveView('grafana-ia-estimations')}
+            style={navButtonStyle(activeView === 'grafana-ia-estimations')}>
+            🧠 Estimations IA
           </button>
           <button 
             onClick={() => setActiveView('chat')}
@@ -67,18 +80,20 @@ const App = () => {
         <main className="flex-1 p-4 overflow-auto">
           {activeView === 'monitor' && (
              <div id="fan">
-               <Fans sensors={sensors} activeIndex={selectedSensorIndex} />
+               <FanPanelWrapper sensors={sensors} activeIndex={selectedSensorIndex} />
              </div>
           )}
-          {activeView === 'grafana' && (
-             // Ecrire "d-solo" avoir uniquement le panel sans les menus, "d" pour le dashboard complet
-             <iframe 
-               src="http://localhost:3001/d/acq-indus-tunnel-dashboard/supervision-ventilateurs?orgId=1&kiosk" 
-               style={{ width: '100%', height: '80vh', border: 'none', borderRadius: '8px' }}
-             />
+          {activeView === 'grafana-history' && (
+            <GrafanaMeasuresIFramePanel />             
+          )}
+          {activeView === 'grafana-alerts' && (
+            <GrafanaAlertsIFramePanel />             
+          )}
+          {activeView === 'grafana-ia-estimations' && (
+            <GrafanaIAEstimationsIFramePanel />             
           )}
           {activeView === 'chat' && (
-             <Chat />
+             <ChatPanel />
           )}
         </main>
       </div>

@@ -14,7 +14,7 @@ interface ChatApiResponse {
   reply: string;
 }
 
-export default function Chat(): JSX.Element {
+export default function ChatPanel(): JSX.Element {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
@@ -59,6 +59,7 @@ export default function Chat(): JSX.Element {
         ...prev,
         { id: Date.now() + 1, sender: 'bot', text: data.reply },
       ]);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       setMessages((prev) => [
         ...prev,

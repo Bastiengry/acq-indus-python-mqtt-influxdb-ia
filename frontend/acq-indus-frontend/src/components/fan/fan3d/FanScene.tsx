@@ -1,7 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment, ContactShadows, Center } from '@react-three/drei';
-import FanModel from './FanModel'; 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import Fan3D from './Fan3D';
 
 interface SceneInstance {
   healthStatus: string;
@@ -82,7 +82,7 @@ export default function Scene({ healthStatus = 'OK', vibration = 0, instances }:
           {positioned.map((it, idx) => (
             <group key={idx} position={it.position} rotation={it.rotation}>
               <Center top={false}>
-                <FanModel healthStatus={it.healthStatus} vibration={it.vibration} />
+                <Fan3D healthStatus={it.healthStatus} vibration={it.vibration} />
               </Center>
             </group>
           ))}
