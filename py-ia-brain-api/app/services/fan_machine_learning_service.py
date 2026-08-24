@@ -43,7 +43,7 @@ class FanMachineLearningService:
             'current': 12.0 + rng.normal(0, 0.2, n_samples)
         })
 
-        iso_model = IsolationForest(contamination=0.01, random_state=42)
+        iso_model = IsolationForest(contamination=0.1, random_state=42)
         iso_model.fit(features)
 
         iso_path, _ = self._get_model_paths(fan_id)
@@ -59,13 +59,13 @@ class FanMachineLearningService:
         temp_0 = 45.0 + rng.normal(0, 0.5, n_samples_per_class)
         curr_0 = 12.0 + rng.normal(0, 0.2, n_samples_per_class)
 
-        vib_1 = rng.uniform(3.5, 5.5, n_samples_per_class)
+        vib_1 = rng.uniform(5.0, 9.0, n_samples_per_class)
         temp_1 = 45.0 + rng.normal(0, 0.5, n_samples_per_class)
         curr_1 = 12.0 + rng.normal(0, 0.2, n_samples_per_class)
 
         vib_2 = 2.5 + rng.normal(0, 0.1, n_samples_per_class)
-        temp_2 = 55.0 + rng.uniform(0, 15.0, n_samples_per_class)
-        curr_2 = 14.0 + rng.uniform(0, 3.0, n_samples_per_class)
+        temp_2 = rng.uniform(55.0, 80.0, n_samples_per_class)
+        curr_2 = rng.uniform(18.0, 30.0, n_samples_per_class)
 
         X_train = pd.DataFrame({
             'vibration': np.concatenate([vib_0, vib_1, vib_2]),
@@ -113,10 +113,14 @@ class FanMachineLearningService:
         if not all(col in df.columns for col in required_cols):
             return {
                 "fan_id": fan_id, "status": "error", "health_status": "UNKNOWN",
-                "ai_message": f"Colonnes requises manquantes. Nécessaires: {required_cols}"
+                "ml_message": f"Colonnes requises manquantes. Nécessaires: {required_cols}"
             }
 
         time_col = '_time' if '_time' in df.columns else ('time' if 'time' in df.columns else None)
+
+        # Garantir le tri par ordre chronologique pour isoler correctement le dernier point
+        if time_col and time_col in df.columns:
+            df = df.sort_values(by=time_col).reset_index(drop=True)
 
         records = [
             {
@@ -133,11 +137,64 @@ class FanMachineLearningService:
                 "faulty_feature": None, "fault_label": None, "points_count": 0, "data": records
             }
 
-        last_row = df.iloc[-1]
+        # 2. Chargement des modèles entraînés
+        iso_path, clf_path = self._get_model_paths(fan_id)
+        iso_model = self._load_model(iso_path, f"iso_{fan_id}")
+        clf_model = self._load_model(clf_path, f"clf_{fan_id}")
 
-        response = {
+        if iso_model is None or clf_model is None:
+            return {
+                "fan_id": fan_id,
+                "status": "ok",
+                "health_status": "UNTRAINED",
+                "faulty_feature": None,
+                "fault_label": None,
+                "ml_message": "Erreur lors de l'accès aux modèles.",
+                "points_count": len(features),
+                "data": records
+            }
+
+        # 3. Inférence ML sur la TOUTE DERNIÈRE mesure reçue
+        latest_features = features.tail(1)
+        latest_prediction = iso_model.predict(latest_features)[0]
+
+        if latest_prediction == -1:
+            health_status = "CRITICAL"
+
+            means = pd.Series({'vibration': 2.5, 'temperature': 45.0, 'current': 12.0})
+            stds = pd.Series({'vibration': 0.1, 'temperature': 0.5, 'current': 0.2})
+
+            eval_series = latest_features.iloc[0]
+            eval_point = latest_features
+
+            z_scores = ((eval_series - means) / stds).abs()
+            faulty_feature = str(z_scores.idxmax())
+
+            fault_code = int(clf_model.predict(eval_point)[0])
+            labels = {
+                1: "Usure mécanique / Désalignement",
+                2: "Surchauffe Moteur / Surcharge électrique"
+            }
+            fault_label = labels.get(fault_code, "Anomalie non classifiée")
+
+            fault_val = float(eval_series[faulty_feature])
+            ml_message = f"Anomalie sur {faulty_feature.upper()} ({fault_val:.2f}) - Diagnostics : {fault_label}"
+
+            last_row = df.iloc[-1]
+        else:
+            health_status = "OK"
+            faulty_feature = None
+            fault_label = None
+            ml_message = "Système nominal"
+            last_row = df.iloc[-1]
+
+        return {
             "fan_id": fan_id,
             "status": "ok",
+            "health_status": health_status,
+            "faulty_feature": faulty_feature,
+            "fault_label": fault_label,
+            "ml_message": ml_message,
             "last_vibration": float(last_row['vibration']) if pd.notnull(last_row['vibration']) else None,
             "last_temperature": float(last_row['temperature']) if pd.notnull(last_row['temperature']) else None,
             "last_current": float(last_row['current']) if pd.notnull(last_row['current']) else None,
@@ -145,61 +202,6 @@ class FanMachineLearningService:
             "points_count": len(features),
             "data": records
         }
-
-        # 2. Chargement des modèles entraînés
-        iso_path, clf_path = self._get_model_paths(fan_id)
-        iso_model = self._load_model(iso_path, f"iso_{fan_id}")
-        clf_model = self._load_model(clf_path, f"clf_{fan_id}")
-
-        if iso_model is None or clf_model is None:
-            response.update({
-                "health_status": "UNTRAINED",
-                "faulty_feature": None,
-                "fault_label": None,
-                "ai_message": "Erreur lors de l'accès aux modèles."
-            })
-            return response
-
-        # 3. Inférence ML & Calcul robuste du Z-Score
-        last_point = features.iloc[[-1]]
-        last_series = features.iloc[-1]
-
-        if iso_model.predict(last_point)[0] == -1:
-            health_status = "CRITICAL"
-
-            if len(features) > 1:
-                historical = features.iloc[:-1]
-                means = historical.mean()
-                stds = historical.std().fillna(1.0).replace(0, 1e-6)
-            else:
-                means = pd.Series({'vibration': 2.5, 'temperature': 45.0, 'current': 12.0})
-                stds = pd.Series({'vibration': 0.1, 'temperature': 0.5, 'current': 0.2})
-
-            z_scores = ((last_series - means) / stds).abs()
-            faulty_feature = str(z_scores.idxmax())
-
-            fault_code = int(clf_model.predict(last_point)[0])
-            labels = {
-                1: "Usure mécanique / Désalignement",
-                2: "Surchauffe Moteur / Surcharge électrique"
-            }
-            fault_label = labels.get(fault_code, "Anomalie non classifiée")
-
-            fault_val = float(last_series[faulty_feature])
-            ai_message = f"Anomalie sur {faulty_feature.upper()} ({fault_val:.2f}) - Diagnostics : {fault_label}"
-        else:
-            health_status = "OK"
-            faulty_feature = None
-            fault_label = None
-            ai_message = "Système nominal"
-
-        response.update({
-            "health_status": health_status,
-            "faulty_feature": faulty_feature,
-            "fault_label": fault_label,
-            "ai_message": ai_message
-        })
-        return response
 
     def update_last_predictions(self) -> None:
         """Récupère tous les fan_ids, exécute l'analyse pour chacun et sauve le résultat dans InfluxDB."""
@@ -209,7 +211,7 @@ class FanMachineLearningService:
 
         for fan_id in fan_ids:
             try:
-                df = self.influx_repo.get_recent_data(fan_id, minutes=1440)
+                df = self.influx_repo.get_recent_data(fan_id, minutes=1)
                 prediction = self.predict(fan_id, df)
                 self.influx_repo.save_prediction(prediction)
             except Exception as e:

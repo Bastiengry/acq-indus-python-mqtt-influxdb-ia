@@ -4,7 +4,7 @@ export interface PredictionRecord {
   health_status: 'OK' | 'WARNING' | 'CRITICAL';
   faulty_feature: string | null;
   fault_label: string | null;
-  ai_message: string;
+  ml_message: string;
   last_vibration: number;
   last_temperature: number;
   last_current: number;

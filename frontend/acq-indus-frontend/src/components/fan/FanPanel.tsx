@@ -83,7 +83,7 @@ export default function FanPanel({ sensorId = 'UNKNOWN', label = 'UNKNOWN' }: Fa
           <div>SYSTEM_LOG: Monitoring actif ({measures.length} mesures)</div>
           <div className="text-slate-300">
             DIAGNOSTIC: <span className={prediction?.health_status === 'CRITICAL' ? 'text-red-400 font-bold' : 'text-emerald-400'}>
-              {prediction?.ai_message ||'Aucun diagnostic disponible'}
+              {prediction?.ml_message ||'Aucun diagnostic disponible'}
             </span>
           </div>
         </div>

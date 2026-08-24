@@ -19,7 +19,7 @@ class FanService:
             logger.error(f"Erreur lors de la récupération des fan_ids : {e}")
             return []
 
-    def read_data(self, fan_id: str, minutes: int = 1440) -> list[dict]:
+    def read_data(self, fan_id: str, minutes: int = 5) -> list[dict]:
         """
         Lit et retourne la liste des dernières télémétries enregistrées pour un ventilateur.
         """

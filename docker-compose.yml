@@ -1,5 +1,6 @@
 services:
   ##LLM local
+  ## Serveur Ollama principal
   acq-indus-ollama:
     image: ollama/ollama:latest
     container_name: acq-indus-ollama
@@ -7,6 +8,20 @@ services:
       - "11435:11434"
     volumes:
       - ollama_data:/root/.ollama
+    restart: always
+    networks:
+      - acq-network
+
+  ## Script de téléchargement du modèle au démarrage
+  acq-indus-ollama-pull:
+    image: ollama/ollama:latest
+    container_name: acq-indus-ollama-pull
+    depends_on:
+      - acq-indus-ollama
+    entrypoint: /bin/sh
+    command: "-c 'sleep 3 && ollama pull qwen2.5:3b'"
+    environment:
+      - OLLAMA_HOST=acq-indus-ollama:11434
     networks:
       - acq-network
 

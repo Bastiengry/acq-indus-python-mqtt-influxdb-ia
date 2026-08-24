@@ -7,8 +7,6 @@ interface DataChartProps {
 }
 
 export default function DataChart({ measures }: DataChartProps) {
-  console.log('mesures', measures);
-
   // Fonction pour afficher uniquement l'heure (ex: 09:56:55)
   const formatTime = (timeStr: string) => {
     if (!timeStr) return '';

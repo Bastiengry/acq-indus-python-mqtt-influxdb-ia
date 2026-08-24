@@ -40,13 +40,13 @@ async def lifespan(app: FastAPI):
     )
     logger.info("--> [SCHEDULER] Planificateur configuré pour mise à jour de Neo4j (20s)")
 
-    # Détection, auto-entraînement à la volée et prédictions ML (toutes les 5s)
+    # Détection, auto-entraînement à la volée et prédictions ML (toutes les 3s)
     scheduler.add_job(
         scheduled_ml_update,
         'interval',
-        seconds=5
+        seconds=3
     )
-    logger.info("--> [SCHEDULER] Planificateur configuré pour prédictions ML & Auto-entraînement (5s)")
+    logger.info("--> [SCHEDULER] Planificateur configuré pour prédictions ML & Auto-entraînement (3s)")
 
     scheduler.start()
 

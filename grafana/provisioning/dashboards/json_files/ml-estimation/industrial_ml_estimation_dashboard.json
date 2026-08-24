@@ -98,12 +98,12 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "ai_message"
+              "options": "ml_message"
             },
             "properties": [
               {
                 "id": "displayName",
-                "value": "Diagnostic IA"
+                "value": "Diagnostic ML"
               }
             ]
           },
@@ -175,7 +175,7 @@
           "refId": "A"
         }
       ],
-      "title": "Historique des Diagnostics & Prédictions IA",
+      "title": "Historique des Diagnostics & Prédictions ML",
       "type": "table"
     }
   ],
@@ -184,7 +184,7 @@
   "style": "dark",
   "tags": [
     "industrial",
-    "ai_predictions"
+    "ml_predictions"
   ],
   "time": {
     "from": "now-24h",
@@ -192,6 +192,6 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Industrial AI Diagnostics Dashboard",
-  "uid": "industrial-ai-db"
+  "title": "Industrial ML Diagnostics Dashboard",
+  "uid": "industrial-ml-db"
 }

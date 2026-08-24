@@ -72,7 +72,7 @@ class InfluxRepository:
             logger.error(f"Erreur lors de la récupération des fan_ids : {e}")
             return []
 
-    def get_recent_data(self, fan_id: str, minutes: int = 1440) -> pd.DataFrame:
+    def get_recent_data(self, fan_id: str, minutes: int = 5) -> pd.DataFrame:
         query = f'''
         from(bucket: "{self.bucket}")
           |> range(start: -{minutes}m)
@@ -107,7 +107,7 @@ class InfluxRepository:
                 .field("health_status", health_status)
                 .field("faulty_feature", prediction.get("faulty_feature") or "none")
                 .field("fault_label", prediction.get("fault_label") or "none")
-                .field("ai_message", prediction.get("ai_message") or "")
+                .field("ml_message", prediction.get("ml_message") or "")
                 .field("last_vibration", prediction.get("last_vibration", 0.0) or 0.0)
                 .field("last_temperature", prediction.get("last_temperature", 0.0) or 0.0)
                 .field("last_current", prediction.get("last_current", 0.0) or 0.0)

@@ -1,23 +1,22 @@
 # Flux de données de l'application
 ```
-Simulateur Python -> Broker MQTT (Mosquitto) -> | -> Telegraf (Collecteur) -> InfluxDB (Séries Temporelles) -> IA Python -> application Frontend supervision (onglet "monitor")
-                                                |                                                           -> application Grafana     + application Frontend supervision (onglet "grafana")
-                                                |
-                                                |
-                                                |
-                                                | -> Gestionnaire d'alarmes
-                                                |       (Grafana alerting)
-                                                |            |
-                                                |            | Ecriture dans un topic dédié aux alarmes
-                                                |            | (Puis telegraf écrit en BDD)
-                                                |            |
-                                                | <-        <-
+Simulateur Python -> Broker MQTT (Mosquitto) -> Telegraf (Collecteur) -> InfluxDB (Séries Temporelles) -> | -> Back IA/ML Python       -> application Frontend supervision (onglet "monitor")
+                                                                                   |                      | -> application Grafana     -> application Frontend supervision (divers onglets dashboards Grafana)
+                                                                                   |
+                                                                                   |
+                                                                                   |
+                                                                                   | -> Gestionnaire d'alarmes
+                                                                                   |      (Grafana alerting)
+                                                                                   |            |
+                                                                                   |            | Ecriture dans un Webhook
+                                                                                   |            | (Puis Telegraf écrit dans InfluxDB)
+                                                                                   |            |
+                                                                                   | <-        <-
 ```
 
 
 # A REINSTALLER MANUELLEMENT LA PREMIERE FOIS (NON PRIS EN CHARGE PAR DOCKER COMPOSE)
 1. Générer le TOKEN InfluxDB
-2. Charger le modèle de LLM pour le chatbot
 
 
 # Génération du token dans influxdb
@@ -168,7 +167,9 @@ sudo docker exec -it acq-indus-mosquitto mosquitto_sub -h localhost -t "#" -v
 # Supervision frontend
 1. Pour visualiser le frontend de supervision, se connecter à l'adresse "http://localhost:8081" ou cliquer sur le lien dans l'application de portail web
 
-2. Pour utiliser le chatbot, il faut installer le modèle du LLM : "docker exec -it acq-indus-ollama ollama run qwen2.5:3b"
+# Supervision frontend : CHATBOT
+**==> AUTOCONFIGURE DANS LE docker-compose.yml**
+1. Pour utiliser le chatbot, il faut d'abord installer le modèle du LLM : "docker exec -it acq-indus-ollama ollama run qwen2.5:3b"
 
 # Neo4j (knowledge graph)
 1. Se connecter à l'IHM à l'adresse "http://localhost:7474"

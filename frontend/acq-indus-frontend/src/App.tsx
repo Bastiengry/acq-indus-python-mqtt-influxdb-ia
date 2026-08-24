@@ -4,7 +4,7 @@ import ChatPanel from './components/chat/ChatPanel';
 import './App.css';
 import GrafanaMeasuresIFramePanel from './components/grafana/GrafanaMeasuresIFramePanel';
 import GrafanaAlertsIFramePanel from './components/grafana/GrafanaAlertsIFramePanel';
-import GrafanaIAEstimationsIFramePanel from './components/grafana/GrafanaIAEstimationsIFramePanel';
+import GrafanaMLEstimationsIFramePanel from './components/grafana/GrafanaMLEstimationsIFramePanel';
 
 const App = () => {
   const [isOpen, setIsOpen] = useState(true);
@@ -46,9 +46,9 @@ const App = () => {
             🔔 Historique des alertes Grafana
           </button>
           <button 
-            onClick={() => setActiveView('grafana-ia-estimations')}
-            style={navButtonStyle(activeView === 'grafana-ia-estimations')}>
-            🧠 Estimations IA
+            onClick={() => setActiveView('grafana-ml-estimations')}
+            style={navButtonStyle(activeView === 'grafana-ml-estimations')}>
+            📈 Estimations ML
           </button>
           <button 
             onClick={() => setActiveView('chat')}
@@ -89,8 +89,8 @@ const App = () => {
           {activeView === 'grafana-alerts' && (
             <GrafanaAlertsIFramePanel />             
           )}
-          {activeView === 'grafana-ia-estimations' && (
-            <GrafanaIAEstimationsIFramePanel />             
+          {activeView === 'grafana-ml-estimations' && (
+            <GrafanaMLEstimationsIFramePanel />             
           )}
           {activeView === 'chat' && (
              <ChatPanel />
