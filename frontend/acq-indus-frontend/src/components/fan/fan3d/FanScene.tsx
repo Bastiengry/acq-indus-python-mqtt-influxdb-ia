@@ -40,7 +40,6 @@ export default function Scene({ healthStatus = 'OK', vibration = 0, instances }:
 
   const [responsiveZ, setResponsiveZ] = useState<number>(6);
 
-  // ÉCOUTE LA LARGEUR EXACTE DU CONTENEUR DIV
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -48,15 +47,14 @@ export default function Scene({ healthStatus = 'OK', vibration = 0, instances }:
       for (const entry of entries) {
         const width = entry.contentRect.width;
         
-        // Ajuste la caméra selon la largeur réelle de la div 3D
         if (width < 350) {
-          setResponsiveZ(13); // Très étroit (comme sur votre image) -> Recul fort
+          setResponsiveZ(13);
         } else if (width < 500) {
-          setResponsiveZ(10); // Étroit -> Recul moyen
+          setResponsiveZ(10);
         } else if (width < 750) {
           setResponsiveZ(8);
         } else {
-          setResponsiveZ(6);  // Largeur normale
+          setResponsiveZ(6);
         }
       }
     });
@@ -66,8 +64,9 @@ export default function Scene({ healthStatus = 'OK', vibration = 0, instances }:
   }, []);
 
   return (
-    <div ref={containerRef} className="relative w-full h-full min-h-[300px] overflow-hidden bg-gradient-to-b from-slate-900 to-black">
+    <div ref={containerRef} className="w-full h-full min-h-0 relative bg-gradient-to-b from-slate-900 to-black overflow-hidden">
       <Canvas shadows camera={{ position: [0, 0, responsiveZ], fov: 50 }}>
+        {/* On lie la position Z directement à la mise à jour sans dupliquer l'élément caméra */}
         <PerspectiveCamera makeDefault position={[0, 0, responsiveZ]} fov={50} />
         
         <OrbitControls enablePan={false} minDistance={2} maxDistance={30} target={[0, 0, 0]} />

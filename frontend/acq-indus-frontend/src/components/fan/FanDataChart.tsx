@@ -19,8 +19,8 @@ export default function DataChart({ measures }: DataChartProps) {
   };
 
   return (
-    <div className="bg-slate-800 p-4 rounded-lg shadow-inner w-full flex flex-col">
-      <h3 className="text-slate-400 text-sm font-semibold mb-4 uppercase tracking-wider">
+    <div className="bg-slate-800 p-3 shadow-inner w-full flex flex-col">
+      <h3 className="text-slate-400 text-sm font-semibold uppercase tracking-wider">
         Données en temps réel
       </h3>
       
